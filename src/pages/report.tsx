@@ -28,7 +28,10 @@ const REPORT_UTM_PARAMS = [
     "utm_term",
     "utm_content",
 ] as const;
-const REPORT_SUB_PARAMS = ["sub", "sub1", "sub2", "sub3", "sub4", "sub5"] as const;
+const REPORT_SUB_PARAMS = [
+    "sub", "sub1", "sub2", "sub3", "sub4",
+    // "sub5"
+] as const;
 
 /** Mặc định giống web: 7 ngày gần nhất (portal: Last 7 Days). */
 function getDefaultDateRange7d(): { start: Date; end: Date } {
@@ -953,14 +956,14 @@ const ReportPage: React.FC = () => {
                                     <span className="conv-detail-label">sub3:</span>
                                     <span className="conv-detail-value">{selectedConversion?.pub_utm_param?.sub3 || "-"}</span>
                                 </div>
-                                <div className="conv-detail-row">
+                                <div className="conv-detail-row" style={{ borderBottom: 'none' }}>
                                     <span className="conv-detail-label">sub4:</span>
                                     <span className="conv-detail-value">{selectedConversion?.pub_utm_param?.sub4 || "-"}</span>
                                 </div>
-                                <div className="conv-detail-row" style={{ borderBottom: 'none' }}>
+                                {/* <div className="conv-detail-row" style={{ borderBottom: 'none' }}>
                                     <span className="conv-detail-label">sub5:</span>
                                     <span className="conv-detail-value">{selectedConversion?.pub_utm_param?.sub5 || "-"}</span>
-                                </div>
+                                </div> */}
                             </div>
                         )}
                     </div>

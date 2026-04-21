@@ -137,6 +137,8 @@ const JobDetailPage: React.FC = () => {
             return;
         }
         if (ctaMode === "join") {
+            // TODO: Gọi api fetchJoinCampaign giống bên CampaignCard
+
             try {
                 const raw = String((campaign as { url?: unknown }).url ?? "").trim();
                 if (!raw) {

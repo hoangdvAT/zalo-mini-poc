@@ -248,7 +248,7 @@ const HomePage: React.FC = () => {
     const campaign = campaigns[0];
     const rate = parseFloat(campaign.max_commission_rate) || 0;
     const value = parseFloat(campaign.max_commission_value) || 0;
-    const commissionDisplay = rate > 0 ? `${rate}%` : value > 0 ? `${value.toLocaleString('vi-VN')}đ` : "Liên hệ";
+    const commissionDisplay = rate > 0 ? `${rate}%` : value > 0 ? `${value.toLocaleString('vi-VN')}đ` : "";
     const shareContent = `Tham gia chiến dịch ${campaign.name} nhận ngay ưu đãi ${commissionDisplay}`;
 
     setSharingInProgress(true);

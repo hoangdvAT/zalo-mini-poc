@@ -63,22 +63,30 @@ const PaymentPage: React.FC = () => {
     });
 
     const STATUS_TRANSLATIONS: Record<string, string> = {
-        "New": "Mới",
-        "Pending": "Chờ thanh toán",
-        "Approve": "Đã duyệt",
+        // "New": "Mới",
+        // "Pending": "Chờ thanh toán",
+        // "Approve": "Đã duyệt",
+        // "Rejected": "Từ chối",
+        // "Paid": "Đã thanh toán",
+        // "Cancel": "Đã huỷ",
+        // "Waiting": "Đang chờ"
+
+        "Waiting": "Chờ thanh toán",
         "Rejected": "Từ chối",
         "Paid": "Đã thanh toán",
-        "Cancel": "Đã huỷ",
-        "Waiting": "Đang chờ"
     };
 
     const DEFAULT_STATUS_MAP: Record<number, string> = {
-        1: "Mới",
+        // 1: "Mới",
+        // 2: "Chờ thanh toán",
+        // 3: "Đã duyệt",
+        // 4: "Từ chối",
+        // 5: "Đã thanh toán",
+        // 6: "Đã huỷ"
+
         2: "Chờ thanh toán",
-        3: "Đã duyệt",
-        4: "Từ chối",
-        5: "Đã thanh toán",
-        6: "Đã huỷ"
+        3: "Từ chối",
+        4: "Đã thanh toán",
     };
 
     useEffect(() => {
@@ -115,12 +123,12 @@ const PaymentPage: React.FC = () => {
     const loadConfig = async () => {
         try {
             const config = await fetchPaymentConfig();
-            if (config?.status) {
-                const statuses = Object.keys(config.status).map(key => {
-                    const item = config.status[key];
+            if (config?.status_invoice_publisher) {
+                const statuses = Object.keys(config.status_invoice_publisher).map(key => {
+                    const item = config.status_invoice_publisher[key];
                     const engName = typeof item === 'object' ? item.name : item;
-                    const viName = STATUS_TRANSLATIONS[engName] || engName || DEFAULT_STATUS_MAP[Number(key)] || `Status ${key}`;
-                    return { value: Number(key), name: viName };
+                    const viName = STATUS_TRANSLATIONS[engName] || engName || DEFAULT_STATUS_MAP[Number(item.value)] || `Status ${item.value}`;
+                    return { value: Number(item.value), name: viName };
                 });
                 setStatusConfig(statuses);
             } else {
@@ -247,7 +255,9 @@ const PaymentPage: React.FC = () => {
         const code = getInvoiceStatusCode(item);
         if (code !== undefined) {
             const conf = statusConfig.find((c) => c.value === code);
-            if (conf) return conf.name;
+            if (conf) {
+                return conf.name;
+            };
         }
         const raw = item.status;
         const conf2 = statusConfig.find((c) => String(c.value) === String(raw));

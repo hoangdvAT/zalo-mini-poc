@@ -1,6 +1,7 @@
 import React, { useCallback } from "react";
 import { Text, useNavigate } from "zmp-ui";
 import { LinkChainIcon } from "@/components/icons/LinkChainIcon";
+import { fetchJoinCampaign } from "@/services/api";
 
 export type CampaignCardCtaMode = "join" | "pending" | "create-link" | "rejected";
 
@@ -66,14 +67,61 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
         return;
       }
       if (ctaMode === "join") {
-        navigate(`/job/${id}`);
-        return;
+        // navigate(`/job/${id}`);
+        // return;
+
+        fetchJoinCampaign({ campaign_id: id })
+        .then((res) => {
+          if (res.status === 'fail') {
+            const typeData = typeof res.data.check;
+            if (typeData === 'object') {
+              if (res.data.check.total > 0) {
+                if (res.data.check.pending > 0) {
+                  // TODO
+                  // alert('info', "Hiện tại Adspace của bạn đang ở trạng thái chờ duyệt và sẽ xử lý trong vòng 24h");
+                } else {
+                  // TODO
+                  // alert("infor", "Bạn chưa có AdSpaces. Vui lòng tạo AdSpaces để được tham gia chiến dịch");
+                  // TODO
+                  // Show alert với 2 btn "Tạo ad-space", "Đóng"
+                  // Nhấn "Tạo ad-space" thì Chuyển tới màn ad-space
+                }
+              } else {
+                // TODO
+                // alert("infor", "Bạn chưa có AdSpaces. Vui lòng tạo AdSpaces để được tham gia chiến dịch");
+                // TODO
+                // Show alert với 2 btn "Tạo ad-space", "Đóng"
+                // Nhấn "Tạo ad-space" thì Chuyển tới màn ad-space
+              }
+            } else if (typeData === 'undefined') {
+              // TODO
+              // alert('error', "Bạn không có quyền tham gia chiến dịch");
+            }
+          } else if (res.status === 'error') {
+            if (res.errorCode && res.errorCode === 403) {
+              // TODO
+              // alert('error', res.message);
+            } else {
+              // TODO
+              // alert('success', "Bạn đã tham gia chiến dịch thất bại.");
+            }
+          } else {
+            // TODO
+            // alert('success', "Bạn đã tham gia chiến dịch thành công.");
+    
+            // TODO: fetch lại list chiến dịch hoặc cập nhật lại hiển thị nút
+          }
+        })
+        .catch(() => {
+          // TODO Something
+        })
       }
       if (ctaMode === "create-link") {
         navigate(`/get-link/${id}`);
         return;
       }
     },
+    // TODO: Something
     [contractsLoading, id, isGuest, ctaMode, navigate]
   );
 
@@ -111,10 +159,12 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
             <span className="campaign-card__date-text">{dateRange}</span>
           </div>
         ) : null}
-        <div className="campaign-card__hoa-hong-row">
-          <span className="campaign-card__hoa-hong-label">Hoa hồng</span>
-          <span className="campaign-card__hoa-hong-value">{commissionDisplay}</span>
-        </div>
+        {commissionDisplay ? (
+          <div className="campaign-card__hoa-hong-row">
+            <span className="campaign-card__hoa-hong-label">Hoa hồng</span>
+            <span className="campaign-card__hoa-hong-value">{commissionDisplay}</span>
+          </div>
+        ): null}
         {/* Web: rejected — không render CTA trên card list; chi tiết xem `job-detail`. */}
         {isGuest ? (
           <button type="button" className="campaign-card__btn-cta campaign-card__btn-cta--outline" onClick={handleCta}>

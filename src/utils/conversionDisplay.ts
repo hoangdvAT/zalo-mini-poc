@@ -64,19 +64,13 @@ export function getPublisherCommissionAmount(conv: Conv): number {
 export function getConversionReasonText(conv: Conv): string {
     const c = conv as Record<string, unknown>;
     const reasons = c.reason;
+    let reasonText = "";
     if (Array.isArray(reasons) && reasons.length > 0) {
         const last = reasons[reasons.length - 1] as Record<string, unknown>;
-        const t =
-            (typeof last.log_action === "string" && last.log_action) ||
-            (typeof last.message === "string" && last.message) ||
-            (typeof last.reason === "string" && last.reason) ||
-            (typeof last.content === "string" && last.content);
-        if (t && String(t).trim()) return String(t).trim();
+        const t = (typeof last.log_message === "string" && last.log_message);
+        if (t && String(t).trim()) reasonText = String(t).trim();
     }
-    if (typeof c.reason === "string" && c.reason.trim()) return c.reason.trim();
-    if (typeof c.reject_reason === "string" && c.reject_reason.trim()) return c.reject_reason.trim();
-    if (typeof c.note === "string" && c.note.trim()) return c.note.trim();
-    return "—";
+    return (reasonText !== 'khach hang khong nhan xet!') ? reasonText : '—';
 }
 
 /** Giá trị đơn (sale) */
