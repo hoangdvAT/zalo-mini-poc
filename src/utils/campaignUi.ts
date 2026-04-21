@@ -217,7 +217,7 @@ export function getCampaignCommissionDisplay(c: Campaign): string {
     const value = parseFloat(c.max_commission_value) || 0;
     if (rate > 0) return `${rate}%`;
     if (value > 0) return `${formatNumber(value)} đ`;
-    return "Liên hệ";
+    return "";
 }
 
 /**

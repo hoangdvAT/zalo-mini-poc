@@ -14,12 +14,8 @@ import type {
 } from "@/types/auth";
 import { apiResponseToAuthUser } from "@/types/auth";
 
-// Base URL — giống oneat-zalo-mini: Vite `.env` → `VITE_API_BASE_URL` (vd: https://apigw-publisher.dev.oneat.org)
-const BASE_URL =
-  (typeof import.meta !== "undefined" &&
-    typeof import.meta.env?.VITE_API_BASE_URL === "string" &&
-    import.meta.env.VITE_API_BASE_URL.trim()) ||
-  "https://pub-be-stag.mp.directsale.vn";
+// Base URL — ưu tiên .env (VITE_API_BASE_URL), fallback staging cũ
+const BASE_URL = "https://pub-be-stag.mp.directsale.vn";
 
 // Create axios instance
 const api = axios.create({
@@ -27,9 +23,7 @@ const api = axios.create({
     timeout: 15000,
     headers: {
         "Content-Type": "application/json",
-        Accept: "application/json, text/plain, */*",
         "x-mp-language": "vi",
-        "Mp-Language": "vi",
         "x-port-type": "PUB",
     },
 });
@@ -333,6 +327,21 @@ export async function fetchCampaignsWithContract(params: {
     }
 }
 
+/**
+ * Tham gia campaign
+ * POST /api/v1/contracts
+ * @returns 
+ */
+export async function fetchJoinCampaign(data: any): Promise<any> {
+    try {
+        const response = await api.post(`/api/v1/contracts`, data);
+        return response;
+    } catch (error) {
+        console.error("[API] fetchJoinCampaign:", error);
+        return {};
+    }
+}
+
 // ============ DEEP LINK / TRACKING LINK API ============
 
 /**
@@ -463,8 +472,10 @@ export async function fetchConversions(params: {
             queryParams.append("status", String(params.status));
         }
         if (params.order_id) queryParams.append("filters[order_id]", params.order_id);
-        if (params.utm_param && params.utm_value) queryParams.append(`filters[${params.utm_param}]`, params.utm_value);
-        if (params.sub_param && params.sub_value) queryParams.append(`filters[${params.sub_param}]`, params.sub_value);
+        // if (params.utm_param && params.utm_value) queryParams.append(`filters[${params.utm_param}]`, params.utm_value);
+        // if (params.sub_param && params.sub_value) queryParams.append(`filters[${params.sub_param}]`, params.sub_value);
+        if (params.utm_param && params.utm_value) queryParams.append("utm", JSON.stringify({label: params.utm_param, value: params.utm_value}));
+        if (params.sub_param && params.sub_value) queryParams.append("sub", JSON.stringify({label: params.sub_param, value: params.sub_value}));
 
         const response = await api.get(`/api/v1/publisher/conversion?${queryParams.toString()}`);
 

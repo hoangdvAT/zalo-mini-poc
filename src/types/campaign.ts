@@ -214,7 +214,7 @@ export interface ConversionItem {
     sub2?: string;
     sub3?: string;
     sub4?: string;
-    sub5?: string;
+    // sub5?: string;
   };
   reason?: { log_time: string; log_action: string }[];
   conversion_parts?: any[];
