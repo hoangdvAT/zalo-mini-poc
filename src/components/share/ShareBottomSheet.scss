@@ -1,0 +1,160 @@
+/* ====== Share Bottom Sheet — Figma-matched ====== */
+.share-bottom-sheet {
+  .zaui-sheet-body {
+    padding: 0 !important;
+  }
+}
+
+.share-sheet__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 12px;
+}
+
+.share-sheet__title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #101828;
+}
+
+.share-sheet__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #667085;
+
+  &:active {
+    background: #f2f4f7;
+  }
+}
+
+.share-sheet__divider {
+  height: 1px;
+  background: #eaecf0;
+  margin: 0 20px;
+}
+
+.share-sheet__body {
+  padding: 16px 20px 24px;
+}
+
+.share-sheet__copy-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.share-sheet__copy-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #101828;
+}
+
+.share-sheet__copy-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #e04f16;
+  cursor: pointer;
+
+  &:active {
+    opacity: 0.7;
+  }
+}
+
+.share-sheet__text-preview {
+  background: #fef6ee;
+  /* Orange/25 */
+  border: 1px dashed #f9dbaf;
+  /* Orange/200 */
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #b93815;
+  margin-bottom: 20px;
+  min-height: 80px;
+  word-break: break-word;
+}
+
+.share-sheet__socials {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 4px;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.share-sheet__social-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 56px;
+  cursor: pointer;
+
+  &:active {
+    opacity: 0.7;
+  }
+}
+
+.share-sheet__social-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+  }
+}
+
+.share-sheet__social-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #101828;
+  text-align: center;
+  white-space: nowrap;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.share-sheet__utilities {
+  display: flex;
+  gap: 8px;
+}
+
+.share-sheet__utility-icon {
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+  }
+}

@@ -1,0 +1,195 @@
+<div class="filter-row row pb-24px border-bottom">
+  <div class="col w-100">
+    <div class="row">
+      <div class="col-12 col-md-8 col-lg-9 col-xl-10">
+        <div class="d-flex flex-wrap gap-2">
+          <ng-container *ngFor="let filterSet of filterSets">
+            <ng-container *ngIf="filterSet?.isMulti; else singleFilter">
+              <ng-container *ngIf="filterSet?.value?.length">
+                <span class="filter-item-tag">
+                  <span class="character-break line-clamp-1" style="-webkit-box-orient: vertical;"
+                    [title]="(filterSet?.label | translate) + ': ' + filterSet.title">
+                    <span class="filter-title">
+                      {{ (filterSet?.label | translate) }}:
+                    </span>
+                    <ng-container *ngFor="let val of filterSet?.value; let index = index;">{{ index > 0 ? ", " : "" }}{{ (val | objectInArray : "id" : filterSet?.array)?.name | translate }}</ng-container>
+                  </span>
+      
+                  <span class="close"
+                    (click)="removeFilterItem(filterSet?.key, val)">
+                  </span>
+                </span>
+              </ng-container>
+            </ng-container>
+      
+            <ng-template #singleFilter>
+              <span *ngIf="!(filterSet.key === 'sort' && filterSet.value === 'label,0')"
+                class="filter-item-tag">
+                <span class="character-break line-clamp-1" style="-webkit-box-orient: vertical;"
+                  [title]="(filterSet?.label | translate) + ': ' + (filterSet?.array) ? ((filterSet?.value | objectInArray : 'id' : filterSet?.array)?.name | translate) : filterSet?.value">
+                  <span class="filter-title">
+                    {{ filterSet?.label | translate }}:
+                  </span>
+                  {{ (filterSet?.array) ? ((filterSet?.value | objectInArray : "id" : filterSet?.array)?.name | translate) : filterSet?.value }}
+                </span>
+                <span class="close"
+                  (click)="removeFilterItem(filterSet?.key)">
+                </span>
+              </span>
+            </ng-template>
+          </ng-container>
+    
+          <div class="d-flex flex-nowrap flex-wrap align-items-center gap-2">
+            <button *ngIf="isAbleResetSearch()" class="filter-item-tag reset-btn" type="button" (click)="resetSearch()">
+              <i class="fas fa-sync v2-text-fg-quaternary-400"></i>
+            </button>
+            
+            <div *ngIf="isAbleResetSearch()" class="filter-vertical-line" style="width: 1px; height: 10px; background-color: #D9D9D9"></div>
+        
+            <button class="filter-item-tag filter-btn" type="button" (click)="openFilterModal(filterModal)">
+              <i class="mdi mdi-filter-variant"></i>
+              {{ "Filter" | translate }}
+            </button>
+          </div>
+    
+        </div>
+      </div>
+  
+      <div class="col-12 col-md-4 col-lg-3 col-xl-2">
+        <div class="d-flex justify-content-end align-items-start">
+          <div class="custom-switch-wrapper d-flex align-items-center gap-8px pt-8px">
+            <label class="custom-switch-toggle">
+              <input type="checkbox" [(ngModel)]="isJoined" (ngModelChange)="onChangeIsJoined($event)">
+              <span class="custom-switch-slider"></span>
+            </label>
+            <label class="custom-switch-label text-sm-medium v2-text-secondary-700 mb-0 mr-3 text-nowrap cursor-pointer">
+              {{ "Joined" | translate }}
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row my-row-cols-2 my-row-cols-sm-3 my-row-cols-lg-4 my-row-cols-xl-5 mt-24px">
+  <!-- <div *ngFor="let campaign of campaigns" class="col-6 col-sm-4 col-md-3 py-10px"> -->
+  <div *ngFor="let campaign of campaigns" class="col py-10px">
+    <app-campaign-card [campaign]="campaign"
+      (openCampaignEmitter)="handleOpenCampaignEmitter($event)"
+      (joinEmitter)="handleJoinEmitter($event)"
+      (createDeeplinkEmitter)="handleCreateDeeplinkEmitter($event)">
+    </app-campaign-card>
+  </div>
+</div>
+
+<div>
+  <div *ngIf="!campaigns?.length" class="d-flex flex-column justify-content-center align-items-center py-24px" style="min-height: 50px; gap: 20px">
+    <img class="no-result-empty-box" src="assets/images/empty-box.png" width="152">
+    <p class="w-100 text-md-semibold v2-text-primary-900 text-center">{{ "Empty data" | translate }}</p>
+  </div>
+  <div class="pagination-section px-24px py-12px" *ngIf="campaigns?.length > 0">
+    <app-pagination-navigator
+      [total]="paging?.total"
+      [page]="paging?.page"
+      [pageSize]="paging?.page_size"
+      (pageChangeEmitter)="changePage($event)">
+    </app-pagination-navigator>
+  </div>
+</div>
+
+<ng-template #filterModal let-modal>
+  <form [formGroup]="searchCampaign">
+    <div class="card mb-0 rounded-16px">
+      <div class="card-header d-flex justify-content-between align-item-center v2-border-b-secondary bg-transparent">
+        <b>{{ "Filter" | translate }}</b>
+        <button type="button" class="btn v2-btn-close" style="margin-right: -8px" data-dismiss="modal" aria-label="Close"
+          (click)="modal.dismiss()">
+        </button>
+      </div>
+      <div class="card-body">
+        <div class="row has-child-none-relative">
+          <div class="col-lg-6 col-12">
+            <div class="form-group">
+              <label class="control-label col-form-label">{{ "Campaign Name" | translate }}</label>
+              <input formControlName="name"
+                class="form-control form-control-sm"
+                type="text"
+                [placeholder]="'Enter Campaign Name' | translate">
+            </div>
+          </div>
+
+          <div class="col-lg-6 col-12">
+            <div class="form-group">
+              <label class="control-label col-form-label">{{ "Campaign Type" | translate }}</label>
+              <ng-select formControlName="type_ids"
+                [items]="typeConfig"
+                bindValue="id" bindLabel="translatedName"
+                [multiple]="true"
+                [placeholder]="'Select Type' | translate">
+              </ng-select>
+            </div>
+          </div>
+
+          <div class="col-lg-6 col-12">
+            <div class="form-group">
+              <label class="control-label col-form-label">{{ "Category" | translate }}</label>
+              <ng-select formControlName="category_ids"
+                [items]="categoryConfig "
+                bindValue="id" bindLabel="translatedName"
+                [multiple]="true"
+                [placeholder]="'Select Categories' | translate">
+              </ng-select>
+            </div>
+          </div>
+
+          <div class="col-lg-6 col-12">
+            <div class="form-group">
+              <label class="control-label col-form-label">{{ "Area" | translate }}</label>
+              <ng-select formControlName="area_ids"
+                [items]="areaConfig"
+                bindValue="id" bindLabel="translatedName"
+                [multiple]="true"
+                [placeholder]="'Select Areas' | translate">
+              </ng-select>
+            </div>
+          </div>
+
+          <!-- Control chưa rõ -->
+          <input formControlName="integration_type_ids" class="d-none" type="text">
+          <input formControlName="status" class="d-none" type="text">
+        </div>
+
+        <div class="row"
+          [class.d-none]="isJoined">
+          <div class="col">
+            <div class="form-group">
+              <label class="control-label col-form-label">{{ "Sort" | translate }}</label>
+              <ng-select formControlName="sort"
+                [items]="sortSets"
+                bindValue="id" bindLabel="translatedName"
+                [placeholder]="'Sort By' | translate">
+                <ng-template ng-option-tmp let-item="item">
+                  <div class="d-flex flex-nowrap align-items-center">
+                    <p class="m-0">{{ item?.name | translate }}</p>
+                  </div>
+                </ng-template>
+
+                <ng-template ng-label-tmp let-item="item" let-clear="clear">
+                  <div class="d-flex flex-nowrap align-items-center">
+                    <p class="m-0">{{ item?.name | translate }}</p>
+                  </div>
+                </ng-template>
+              </ng-select>
+            </div>
+          </div>
+        </div>
+        <div class="d-flex justify-content-end align-items-center">
+          <button class="btn btn-info" type="submit" (click)="modal.close(searchCampaign.value)">{{ "Search" | translate }}</button>
+        </div>
+      </div>
+    </div>
+  </form>
+</ng-template>
+
+<ngx-loading [show]="loading" [config]="{ animationType: ngxLoadingAnimationTypes.threeBounce, backdropBackgroundColour: 'rgba(255,255,255,0.5)', backdropBorderRadius: '10px', primaryColour: '#dd0031', secondaryColour: '#006ddd', tertiaryColour: '#6c757d', fullScreenBackdrop: false }"></ngx-loading>

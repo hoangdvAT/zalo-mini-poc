@@ -1,0 +1,155 @@
+<ng-template #epcTpl><span translate>Campaign.EPCDescription</span></ng-template>
+<ng-template #cvrTpl><span translate>Campaign.CVRDescription</span></ng-template>
+<ng-template #cookiesTpl><span translate>Campaign.CookiesDescription</span></ng-template>
+
+<div class="d-flex flex-column gap-16px">
+  <div class="d-flex flex-column gap-4px" style="margin-top: -12px;">
+    <div class="price-info">
+      <div class="row">
+        <div class="col-6 col-md-3 py-12px">
+          <div class="d-flex flex-column justify-content-between align-items-start h-100 px-24px py-12px border rounded-12px">
+            <div class="d-flex justify-content-between align-items-center w-100 mb-12px">
+              <p class="mb-0 text-sm-medium v2-text-tertiary-600">{{ "EPC" | translate }}:</p>
+              <button type="button" class="btn btn-link p-0 border-0 min-w-auto campaign-metric-info-btn"
+                [ngbPopover]="epcTpl" triggers="click" placement="top" container="body">
+                <img src="/assets/scss/icons/V2/tooltip.svg" alt="" class="campaign-metric-tooltip-icon" width="16" height="16">
+              </button>
+            </div>
+            <p class="mb-0 text-lg-bold v2-text-primary-900 character-break">{{ campaign?.epc30 == null ? 0 : campaign?.epc30 | currencyV2 }}</p>
+          </div>
+        </div>
+        <div class="col-6 col-md-3 py-12px">
+          <div class="d-flex flex-column justify-content-between align-items-start h-100 px-24px py-12px border rounded-12px">
+            <div class="d-flex justify-content-between align-items-center w-100 mb-12px">
+              <p class="mb-0 text-sm-medium v2-text-tertiary-600">{{ "CVR" | translate }}:</p>
+              <button type="button" class="btn btn-link p-0 border-0 min-w-auto campaign-metric-info-btn"
+                [ngbPopover]="cvrTpl" triggers="click" placement="top-right" container="body">
+                <img src="/assets/scss/icons/V2/tooltip.svg" alt="" class="campaign-metric-tooltip-icon" width="16" height="16">
+              </button>
+            </div>
+            <p class="mb-0 text-lg-bold v2-text-primary-900 character-break">{{ campaign?.cvr30 == null ? 0 : campaign?.cvr30 | currencyV2 }}%</p>
+          </div>
+        </div>
+        <div class="col-6 col-md-3 py-12px">
+          <div class="d-flex flex-column justify-content-between align-items-start h-100 px-24px py-12px border rounded-12px">
+            <p class="mb-12px text-sm-medium v2-text-tertiary-600">{{ "Commission" | translate }}:</p>
+            <p *ngIf="(campaign?.max_commission_value && campaign?.max_commission_value !== '0') || (campaign?.max_commission_rate && campaign?.max_commission_rate !== '0')"
+              class="mb-0 text-lg-bold v2-text-primary-900 character-break">
+              <span *ngIf="campaign?.max_commission_value && campaign?.max_commission_value !== '0'; else elseComissionRate">
+                {{ (campaign?.max_commission_value | numberRound) | currencyV2 : "." : "," : globalConfig.symbol }}
+              </span>
+
+              <ng-template #elseComissionRate>
+                <span *ngIf="campaign?.max_commission_rate && campaign?.max_commission_rate !== '0'">
+                  {{ (campaign?.max_commission_rate | numberRound) | currencyV2 }} %
+                </span>
+              </ng-template>
+            </p>
+          </div>
+        </div>
+        <div class="col-6 col-md-3 py-12px">
+          <div class="d-flex flex-column justify-content-between align-items-start h-100 px-24px py-12px border rounded-12px">
+            <div class="d-flex justify-content-between align-items-center w-100 mb-12px">
+              <p class="mb-0 text-sm-medium v2-text-tertiary-600">{{ "Cookies" | translate }}:</p>
+              <button type="button" class="btn btn-link p-0 border-0 min-w-auto campaign-metric-info-btn"
+                [ngbPopover]="cookiesTpl" triggers="click" placement="top-right" container="body">
+                <img src="/assets/scss/icons/V2/tooltip.svg" alt="" class="campaign-metric-tooltip-icon" width="16" height="16">
+              </button>
+            </div>
+            <p *ngIf="campaign?.cookie_expire" class="mb-0 text-lg-bold v2-text-primary-900">{{ campaign?.cookie_expire }}{{ 'days' | translate }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="content-info d-flex flex-column align-items-start gap-6px">
+      <div *ngIf="tags?.length" class="content-row d-flex flex-wrap justify-content-start align-items-center w-100 gap-8px px-20px py-16px rounded-10px v2-bg-secondary">
+        <span *ngFor="let tag of tags" class="px-8px py-2px v2-border-blue-200 rounded-full v2-bg-blue-50 v2-text-blue-700 text-xs-medium">
+          <i *ngIf="tag.type === 'FlagTag'" class="fas fa-check text-10px"></i>
+          {{ tag?.label }}
+        </span>
+      </div>
+
+      <!-- Mô tả chiến dịch: đặt ngay dưới data campaign + tags -->
+      <div class="other-content-info v2-border-secondary rounded-8px w-100"
+        [class.d-none]="!campaign?.description">
+        <div class="ql-container ql-snow" style="border-width: 0;">
+          <div class="ql-editor" [innerHTML]="campaign?.description"></div>
+        </div>
+      </div>
+
+      <div class="content-row d-flex flex-wrap justify-content-between align-items-center gap-4px w-100 px-20px py-16px rounded-10px v2-bg-secondary">
+        <div class="title-part d-flex justify-content-start align-items-center gap-8px">
+          <div class="icon bg-icon-earth"></div>
+          <p class="title mb-0 text-sm-regular v2-text-tertiary-600">{{ "Website" | translate }}:</p>
+        </div>
+        <a [href]="campaign?.url" target="_blank" class="value v2-text-blue-600 text-sm-semibold mb-0 character-break line-clamp-1" style="text-decoration: underline; -webkit-box-orient: vertical;">{{ campaign?.url }}</a>
+      </div>
+      <div class="content-row d-flex flex-wrap justify-content-between align-items-center gap-4px w-100 px-20px py-16px rounded-10px v2-bg-secondary">
+        <div class="title-part d-flex justify-content-start align-items-center gap-8px">
+          <div class="icon bg-icon-tag"></div>
+          <p class="title mb-0 text-sm-regular v2-text-tertiary-600 character-break">{{ "Campaign code" | translate }}:</p>
+        </div>
+        <p class="value text-sm-semibold v2-text-primary-900 mb-0">{{ campaign?.code }}</p>
+      </div>
+      <div class="content-row d-flex flex-wrap justify-content-between align-items-center gap-4px w-100 px-20px py-16px rounded-10px v2-bg-secondary">
+        <div class="title-part d-flex justify-content-start align-items-center gap-8px">
+          <div class="icon bg-icon-calendar"></div>
+          <p class="title mb-0 text-sm-regular v2-text-tertiary-600">{{ "Start date" | translate }}:</p>
+        </div>
+        <p class="value v2-text-primary-900 text-sm-semibold mb-0">{{ campaign?.started_at | date : "dd/MM/yyyy" }}</p>
+      </div>
+      <div class="content-row d-flex flex-wrap justify-content-between align-items-center gap-4px w-100 px-20px py-16px rounded-10px v2-bg-secondary">
+        <div class="title-part d-flex justify-content-start align-items-center gap-8px">
+          <div class="icon bg-icon-calendar"></div>
+          <p class="title mb-0 text-sm-regular v2-text-tertiary-600">{{ "End date" | translate }}:</p>
+        </div>
+        <p class="value v2-text-primary-900 text-sm-semibold mb-0">{{ campaign?.ended_at | date : "dd/MM/yyyy" }}</p>
+      </div>
+      <!-- Tạm ẩn do API getCampaign chưa sửa để trả thêm dữ liệu  -->
+      <!-- <div class="content-row d-flex flex-wrap justify-content-between align-items-center gap-4px w-100 px-20px py-16px rounded-10px v2-bg-secondary">
+        <div class="title-part d-flex justify-content-start align-items-center gap-8px">
+          <div class="icon bg-icon-time-coins"></div>
+          <p class="title mb-0 text-sm-regular v2-text-tertiary-600 character-break">{{ "Average Payment" | translate }}:</p>
+        </div>
+        <p class="value v2-text-primary-900 text-sm-semibold mb-0">{{ campaign?.average_payment }}&nbsp;<span *ngIf="campaign?.average_payment">{{ "days" | translate }}</span></p>
+      </div> -->
+      <div class="content-row d-flex flex-wrap justify-content-between align-items-center gap-4px w-100 px-20px py-16px rounded-10px v2-bg-secondary">
+        <div class="title-part d-flex justify-content-start align-items-center gap-8px">
+          <div class="icon bg-icon-calendar-percent"></div>
+          <p class="title mb-0 text-sm-regular v2-text-tertiary-600 character-break">{{ "30-day approval rate" | translate }}:</p>
+        </div>
+        <p class="value v2-text-primary-900 text-sm-semibold mb-0">
+          {{ campaign.approved_rate === '-1' ? '' : ((campaign.approved_rate | numberRound) | currencyV2) + '%' }}
+        </p>
+      </div>
+      <div class="content-row d-flex flex-wrap justify-content-between align-items-center gap-4px w-100 px-20px py-16px rounded-10px v2-bg-secondary">
+        <div class="title-part d-flex justify-content-start align-items-center gap-8px">
+          <div class="icon bg-icon-click-target"></div>
+          <p class="title mb-0 text-sm-regular v2-text-tertiary-600 character-break">{{ "Tracking settings" | translate }}:</p>
+        </div>
+        <p class="value v2-text-primary-900 text-sm-semibold mb-0">
+          {{ (campaign?.device_type | deviceTypeV2 : campaignConfigs)?.name | translate }}
+        </p>
+      </div>
+      <div class="content-row d-flex flex-wrap justify-content-between align-items-center gap-4px w-100 px-20px py-16px rounded-10px v2-bg-secondary">
+        <div class="title-part d-flex justify-content-start align-items-center gap-8px">
+          <div class="icon bg-icon-shapes"></div>
+          <p class="title mb-0 text-sm-regular v2-text-tertiary-600">{{ "Status" | translate }}:</p>
+        </div>
+        <div class="value status d-flex flex-nowrap justify-content-start align-items-center gap-4px mb-0 px-12px py-4px rounded-full text-sm-semibold"
+          [class.status-pending]="statusesConfig[campaign?.status] === 'pending'"
+          [class.status-activated]="statusesConfig[campaign?.status] === 'activated'"
+          [class.status-rejected]="statusesConfig[campaign?.status] === 'rejected'"
+          [class.status-paused]="statusesConfig[campaign?.status] === 'paused'"
+          [class.status-finished]="statusesConfig[campaign?.status] === 'finished'"
+          [class.status-in-active]="statusesConfig[campaign?.status] === 'in-active'"
+          >
+          <span class="status-label text-xs-medium">
+            {{ campaign?.status | campaignStatus : campaignConfigs | translate }}
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

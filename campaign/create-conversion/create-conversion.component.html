@@ -1,0 +1,109 @@
+<div class="d-flex flex-column h-100">
+  <form [formGroup]="createConversion">
+    <div class="row">
+      <div class="col-12">
+        <div class="form-group mb-3">
+          <label class="v2-text-secondary-700 text-sm-medium required">
+            {{ "Full Name" | translate }}
+          </label>
+          <input type="text"
+            class="form-control form-control-sm"
+            [ngClass]="(fails && fails['name']) || (name.invalid && (name.dirty || name.touched)) ? 'is-invalid' : ''"
+            formControlName="name"
+            autocomplete="off">
+          <p *ngIf="fails && fails['name']" class="text-danger">{{ fails['name'][0] }}</p>
+          <p *ngIf="name.invalid && (name.dirty || name.touched) && name.errors.required" class="text-danger">{{ errors.name.required | translate }}</p>
+          <p *ngIf="name.invalid && (name.dirty || name.touched) && name.errors.minlength" class="text-danger">{{ errors.name.minlength | translate }}</p>
+          <p *ngIf="name.invalid && (name.dirty || name.touched) && name.errors.maxlength" class="text-danger">{{ errors.name.maxlength | translate }}</p>
+          <p *ngIf="name.invalid && (name.dirty || name.touched) && name.errors.pattern" class="text-danger">{{ errors.name.pattern | translate }}</p>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-12 col-sm-6">
+        <div class="form-group mb-3">
+          <label class="v2-text-secondary-700 text-sm-medium required">
+            {{ "Contact Phone" | translate }}
+          </label>
+          <input type="tel"
+            class="form-control form-control-sm"
+            [ngClass]="(fails && fails['phone']) || (phone.invalid && (phone.dirty || phone.touched)) ? 'is-invalid' : ''"
+            formControlName="phone"
+            autocomplete="off">
+          <p *ngIf="fails && fails['phone']" class="text-danger">{{ fails['phone'][0] }}</p>
+          <p *ngIf="phone.invalid && (phone.dirty || phone.touched) && phone.errors.required" class="text-danger">{{ errors.phone.required | translate }}</p>
+          <p *ngIf="phone.invalid && (phone.dirty || phone.touched) && phone.errors.pattern" class="text-danger">{{ errors.phone.pattern | translate }}</p>
+        </div>
+      </div>
+      <div class="col-12 col-sm-6">
+        <div class="form-group mb-3">
+          <label class="v2-text-secondary-700 text-sm-medium">
+            {{ "Quantity" | translate }}
+          </label>
+          <input type="number"
+            class="form-control form-control-sm"
+            [ngClass]="(fails && fails['quantity']) || (quantity.invalid && (quantity.dirty || quantity.touched)) ? 'is-invalid' : ''"
+            min="1"
+            max="50"
+            formControlName="quantity">
+          <p *ngIf="fails && fails['quantity']" class="text-danger">{{ fails['quantity'][0] }}</p>
+          <p *ngIf="quantity.invalid && (quantity.dirty || quantity.touched) && quantity.errors.max" class="text-danger">{{ errors.quantity.max | translate }}</p>
+          <p *ngIf="quantity.invalid && (quantity.dirty || quantity.touched) && quantity.errors.min" class="text-danger">{{ errors.quantity.min | translate }}</p>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-12">
+        <div class="form-group mb-3">
+          <label class="v2-text-secondary-700 text-sm-medium required">
+            {{ "Address" | translate }}
+          </label>
+          <input type="text"
+            class="form-control form-control-sm"
+            [ngClass]="(fails && fails['address']) || (address.invalid && (address.dirty || address.touched)) ? 'is-invalid' : ''"
+            formControlName="address">
+          <p *ngIf="fails && fails['address']" class="text-danger">{{ fails['address'][0] }}</p>
+          <p *ngIf="address.invalid && (address.dirty || address.touched) && address.errors.required" class="text-danger">{{ errors.address.required | translate }}</p>
+          <p *ngIf="address.invalid && (address.dirty || address.touched) && address.errors.maxlength" class="text-danger">{{ errors.address.maxlength | translate }}</p>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-12">
+        <div class="form-group mb-3">
+          <label class="v2-text-secondary-700 text-sm-medium">
+            {{ "Note" | translate }}
+          </label>
+          <input type="text"
+            class="form-control form-control-sm"
+            [ngClass]="(fails && fails['note']) || (note.invalid && (note.dirty || note.touched)) ? 'is-invalid' : ''"
+            formControlName="note">
+          <p *ngIf="fails && fails['note']" class="text-danger">{{ fails['note'][0] }}</p>
+          <p *ngIf="note.invalid && (note.dirty || note.touched) && note.errors.maxlength" class="text-danger">{{ errors.note.maxlength | translate }}</p>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-12">
+        <div class="d-flex justify-content-center align-items-center">
+          <div class="form-group mb-3">
+            <re-captcha (resolved)="resolved($event)" siteKey="{{captchaKey}}"></re-captcha>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <div class="row mt-auto">
+    <div class="col-12">
+      <button class="btn v2-btn-primary text-sm-semibold w-100"
+        type="button"
+        [disabled]="createConversion.invalid"
+        (click)="createConversions()">
+        {{ "Create New" | translate }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<ngx-loading [show]="isLoading" [config]="{ animationType: ngxLoadingAnimationTypes.threeBounce, backdropBackgroundColour: 'rgba(255,255,255,0.5)', backdropBorderRadius: '10px', primaryColour: '#dd0031', secondaryColour: '#006ddd', tertiaryColour: '#6c757d', fullScreenBackdrop: false }"></ngx-loading>

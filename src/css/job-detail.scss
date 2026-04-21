@@ -1,0 +1,567 @@
+/* ====== Job Detail — Figma Design v2 ====== */
+
+/* ─── PAGE WRAPPER ─── */
+.detail-page {
+    .zaui-page {
+        overflow: visible !important;
+        background: #F9FAFB !important;
+    }
+}
+
+/* ─── STICKY TITLE HEADER ─── */
+.jd-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    padding-top: calc(14px + var(--app-safe-top));
+    background: #fff;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    border-bottom: 1px solid #EAECF0;
+}
+
+.jd-header__info {
+    flex: 1;
+    min-width: 0;
+}
+
+.jd-header__name {
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    color: #101828;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.jd-header__back {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #101828;
+    cursor: pointer;
+    flex-shrink: 0;
+    border-radius: 8px;
+
+    &:active {
+        background: #f2f4f7;
+    }
+}
+
+/* ─── BODY ─── */
+.jd-body {
+    padding-bottom: 90px;
+}
+
+/* ─── HERO IMAGE ─── */
+.jd-hero {
+    width: 100%;
+    background: #F2F4F7;
+}
+
+.jd-hero__img {
+    width: 100%;
+    display: block;
+    object-fit: cover;
+    max-height: 220px;
+    min-height: 160px;
+}
+
+/* ─── HERO INFO (name + commission) ─── */
+.jd-hero-info {
+    background: #fff;
+    padding: 16px 16px 12px;
+    border-bottom: 8px solid #F2F4F7;
+}
+
+.jd-hero-info__name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #101828;
+    margin: 0 0 6px;
+    line-height: 1.4;
+}
+
+.jd-hero-info__commission {
+    font-size: 14px;
+    color: #344054;
+    margin: 0;
+    line-height: 1.4;
+
+    span {
+        color: #EF4A22;
+        font-weight: 700;
+        font-size: 16px;
+    }
+}
+
+/* ─── ONE CLICK SECTION ─── */
+.jd-oneclick {
+    margin: 0;
+    background: #fff;
+    border: 1px solid #EF4A22;
+    border-radius: 12px;
+    padding: 14px 16px 16px;
+    margin: 12px 16px;
+}
+
+.jd-oneclick__header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 14px;
+}
+
+.jd-oneclick__title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #EF4A22;
+}
+
+.jd-oneclick__steps {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 14px;
+    padding: 10px;
+    /* Đồng bộ vùng hướng dẫn hoa hồng với icon bước (#FEF3F0) */
+    background: #fef3f0;
+    border-radius: 8px;
+}
+
+.jd-oneclick__step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+}
+
+.jd-oneclick__step-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #FEF3F0;
+    border-radius: 10px;
+}
+
+.jd-oneclick__step-label {
+    font-size: 11px;
+    color: #344054;
+    text-align: center;
+    line-height: 1.3;
+    font-weight: 500;
+}
+
+.jd-oneclick__arrow {
+    color: #EF4A22;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+}
+
+.jd-oneclick__btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px;
+    border-radius: 9999px;
+    background: #EF4A22;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: opacity 0.15s;
+
+    &:active {
+        opacity: 0.85;
+    }
+
+    &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    img {
+        filter: brightness(0) invert(1);
+    }
+
+    &--outline {
+        background: #fff;
+        color: #0068ff;
+        border: 1.5px solid #0068ff;
+
+        img,
+        svg {
+            filter: none;
+        }
+    }
+
+    &--primary-blue {
+        background: #0068ff;
+        color: #fff;
+
+        img,
+        svg {
+            filter: none;
+        }
+    }
+
+    &--pending {
+        background: #e8eaed;
+        color: #5f6368;
+
+        img,
+        svg {
+            filter: none;
+        }
+    }
+
+    &--rejected {
+        background: #fef3f2;
+        color: #b42318;
+        border: 1.5px solid #fecdca;
+
+        img,
+        svg {
+            filter: none;
+        }
+    }
+}
+
+/* ─── STATS GRID ─── */
+.jd-stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding: 16px;
+    background: #fff;
+    border-top: 8px solid #F2F4F7;
+    border-bottom: 8px solid #F2F4F7;
+}
+
+.jd-stat-card {
+    border: 1px solid #EAECF0;
+    border-radius: 12px;
+    padding: 12px 14px;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+}
+
+.jd-stat-card__label {
+    font-size: 13px;
+    color: #667085;
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.jd-stat-card__value {
+    font-size: 18px;
+    font-weight: 700;
+    color: #101828;
+}
+
+/* ─── TAGS ─── */
+.jd-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 14px 16px;
+    background: #fff;
+    border-bottom: 8px solid #F2F4F7;
+}
+
+.jd-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 12px;
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 500;
+    background: #EFF8FF;
+    color: #1570EF;
+    border: 1px solid #B2DDFF;
+    white-space: nowrap;
+
+    &--checked {
+        background: #ECFDF3;
+        color: #027A48;
+        border-color: #A6F4C5;
+    }
+}
+
+/* ─── DESCRIPTION ─── */
+.jd-description {
+    background: #fff;
+    padding: 16px;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #344054;
+    border-bottom: 8px solid #F2F4F7;
+    overflow-x: auto;
+
+    p {
+        margin: 0 0 8px;
+    }
+
+    ul,
+    ol {
+        margin: 0 0 8px;
+        padding-left: 20px;
+    }
+
+    li {
+        margin-bottom: 4px;
+    }
+
+    strong,
+    b {
+        font-weight: 600;
+    }
+
+    &--placeholder {
+        border: 1px dashed #D0D5DD;
+        border-radius: 12px;
+        margin: 16px;
+        padding: 40px 16px;
+        text-align: center;
+        border-bottom: 1px dashed #D0D5DD;
+        background: #F9FAFB;
+
+        span {
+            color: #98A2B3;
+            font-size: 15px;
+            font-style: italic;
+        }
+    }
+}
+
+/* ─── METADATA ROWS ─── */
+.jd-meta-list {
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    padding: 0 16px;
+}
+
+.jd-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 0;
+    border-bottom: 1px solid #F2F4F7;
+    font-size: 14px;
+
+    &:last-child {
+        border-bottom: none;
+    }
+}
+
+.jd-meta-row__icon {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.jd-meta-row__label {
+    color: #667085;
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+.jd-meta-row__value {
+    margin-left: auto;
+    font-weight: 600;
+    font-size: 14px;
+    color: #101828;
+    text-align: right;
+    max-width: 55%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    &--link {
+        color: #1570EF;
+        text-decoration: none;
+        font-weight: 500;
+    }
+}
+
+/* ─── STATUS PILL (Kích hoạt, Chờ duyệt, Ngừng) ─── */
+.jd-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px 3px 8px;
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid;
+    white-space: nowrap;
+}
+
+.jd-status-pill__dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+/* ─── BOTTOM FIXED BAR ─── */
+.detail-fixed-bottom {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 10px 16px;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    background: #fff;
+    border-top: 1px solid #F2F4F7;
+    z-index: 100;
+
+    transform: translateY(100%);
+    opacity: 0;
+    visibility: hidden;
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease, visibility 0.3s;
+
+    &.is-visible {
+        transform: translateY(0);
+        opacity: 1;
+        visibility: visible;
+    }
+}
+
+.detail-fixed-bottom__btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px;
+    border-radius: 12px;
+    background: #EF4A22;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    transition: opacity 0.15s;
+
+    &:active {
+        opacity: 0.85;
+    }
+
+    &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    &--outline {
+        background: #fff;
+        color: #0068ff;
+        border: 2px solid #0068ff;
+    }
+
+    &--primary-blue {
+        background: #0068ff;
+        color: #fff;
+    }
+
+    &--pending {
+        background: #e8eaed;
+        color: #5f6368;
+    }
+
+    &--rejected {
+        background: #fef3f2;
+        color: #b42318;
+        border: 2px solid #fecdca;
+    }
+}
+
+/* ─── LOADING OVERLAY ─── */
+.jd-loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 500;
+}
+
+.jd-loading-spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+/* ─── SKELETON ─── */
+.detail-skeleton {
+    padding: 0;
+}
+
+.detail-skeleton__image {
+    width: 100%;
+    height: 200px;
+}
+
+.detail-skeleton__content {
+    padding: 20px 16px;
+}
+
+.detail-skeleton__line {
+    height: 16px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+
+    &--title {
+        height: 22px;
+        width: 70%;
+        margin-bottom: 16px;
+    }
+
+    &--desc {
+        width: 90%;
+    }
+}
+
+.shimmer {
+    background: linear-gradient(90deg, #F2F4F7 25%, #E8ECF0 50%, #F2F4F7 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: -200% 0;
+    }
+
+    100% {
+        background-position: 200% 0;
+    }
+}

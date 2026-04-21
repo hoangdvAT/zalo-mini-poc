@@ -1,0 +1,113 @@
+<div class="campaign-container d-flex flex-column bg-white rounded-16px h-100">
+  <div class="c-header d-flex justify-content-between align-items-start w-100 p-20px pr-0">
+    <div class="d-flex flex-nowrap justify-content-start align-items-center gap-12px">
+      <img class="aspect-square rounded-8px" style="width: 50px;"
+        [src]="campaign?.logo"
+        onerror="this.src='../../../../assets/images/img_defautl.png'"
+        [attr.alt]="campaign?.name">
+      <h2 class="m-0 text-md-semibold v2-text-primary-900 text-wrap">{{ campaign?.name }}
+        <span *ngIf="campaign?.id">
+          ({{ campaign?.id }})
+        </span>
+        <span *ngIf="campaign.privacy"
+          class="badge badge-danger">{{ "Private" | translate }}</span>
+      </h2>
+    </div>
+    <button type="button" class="btn v2-btn-close mr-12px"
+      (click)="onDismiss()">
+    </button>
+  </div>
+  <div *ngIf="ableShowContainer" class="c-nav flex-1 d-flex flex-column w-100 pt-12px pb-20px overflow-hidden">
+    <div class="c-nav-head w-100 px-20px">
+      <div class="overflow-x-auto">
+        <div class="c-nav-track-wrapper">
+          <div class="c-nav-track d-flex flex-nowrap justify-content-start align-items-center">
+            <ng-container *ngFor="let navItem of navItems">
+              <h3
+                *ngIf="
+                  (
+                    navItem?.code === NAV_CODES.GENERAL_INFORMATION
+                  )
+                  || ( navItem?.code === NAV_CODES.LEAD_API
+                    && ( campaign?.type?.name | isShowLeadApiTab : contractStatus?.activated : campaign?.lead_api )
+                  )
+                  || ( navItem?.code === NAV_CODES.DEEP_LINK
+                    && contractStatus?.activated > 0 && campaign?.has_deeplink
+                  )
+                  || ( navItem?.code === NAV_CODES.EMBED_JS
+                    && contractStatus.activated > 0 && campaign?.embed_script === 1
+                  )
+                  || ( navItem?.code === NAV_CODES.CREATE_ORDER
+                    && contractStatus.activated > 0 && campaign.create_conversion === 1
+                  )
+                  || ( navItem?.code === NAV_CODES.REFERRAL_CODE
+                    && campaign.has_ref_code
+                  )
+                  || ( navItem?.code === NAV_CODES.CREATIVE_CODE
+                    && campaign?.files?.length
+                  )
+                "
+                class="c-nav-item w-fit p-8px m-0 text-sm-semibold text-nowrap cursor-pointer"
+                [ngClass]="{'active': navItem?.isActive}"
+                (click)="activeNavItem(navItem)">
+                {{ navItem?.name | translate }}
+              </h3>
+            </ng-container>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="c-nav-body flex-1 w-100 overflow-auto">
+      <div class="nav-body-track d-flex flex-column h-100 px-20px pt-16px">
+        <app-campaign-general
+          [class.d-none]="navItemActive?.code !== NAV_CODES.GENERAL_INFORMATION"
+          [data]="{campaign: campaign, campaignConfigs: campaignConfigs}">
+        </app-campaign-general>
+  
+        <app-lead-api
+          [class.d-none]="navItemActive?.code !== NAV_CODES.LEAD_API"
+          [data]="{campaign: campaign, campaignConfigs: campaignConfigs, adSpaces: adSpaces, adSpaceDefault: adSpaceDefault}"
+          (leadApiChangeEmitter)="handleLeadApiChangeEmitterFromAppLeadApi($event)">
+        </app-lead-api>
+  
+        <app-deep-link *ngIf="
+            navItemActive?.code === NAV_CODES.DEEP_LINK ||
+            hasActivatedDeeplinkNav[NAV_CODES.DEEP_LINK]
+          "
+          [class.d-none]="
+            navItemActive?.code !== NAV_CODES.DEEP_LINK &&
+            hasActivatedDeeplinkNav[NAV_CODES.DEEP_LINK]
+          "
+          [data]="{campaign: campaign, campaignConfigs: campaignConfigs, adSpaces: adSpaces, adSpaceDefault: adSpaceDefault, campaignId: campaign?.id, action: action}"
+          (hasOpenedCreateDeepLinkFormModalEmitter)="handleIsOpenedCreateDeepLinkFormModalEmitter($event)">
+        </app-deep-link>
+  
+        <app-embed-js *ngIf="navItemActive?.code === NAV_CODES.EMBED_JS"
+          [data]="{campaign: campaign, campaignConfigs: campaignConfigs, adSpaces: adSpaces, adSpaceDefault: adSpaceDefault, campaignId: campaign?.id}">
+        </app-embed-js>
+  
+        <app-create-conversion  *ngIf="
+            navItemActive?.code === NAV_CODES.CREATE_ORDER ||
+            hasActivatedDeeplinkNav[NAV_CODES.CREATE_ORDER]
+          "
+          [class.d-none]="
+            navItemActive?.code !== NAV_CODES.CREATE_ORDER &&
+            hasActivatedDeeplinkNav[NAV_CODES.CREATE_ORDER]
+          "
+          [data]="{leadApi: leadApi}">
+        </app-create-conversion>
+  
+        <app-referral-code *ngIf="navItemActive?.code === NAV_CODES.REFERRAL_CODE"
+          [data]="{publisherRefCodes: publisherRefCodes}">
+        </app-referral-code>
+
+        <app-creative *ngIf="navItemActive?.code === NAV_CODES.CREATIVE_CODE"
+          [data]="{campaignFiles: campaignFiles}">
+        </app-creative>
+      </div>
+    </div>
+  </div>
+</div>
+
+<ngx-loading [show]="isLoading" [config]="{ animationType: ngxLoadingAnimationTypes.threeBounce, backdropBackgroundColour: 'rgba(255,255,255,0.5)', backdropBorderRadius: '10px', primaryColour: '#dd0031', secondaryColour: '#006ddd', tertiaryColour: '#6c757d', fullScreenBackdrop: false }"></ngx-loading>

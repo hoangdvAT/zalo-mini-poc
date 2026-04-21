@@ -1,0 +1,40 @@
+@import 'src/assets/scss/utils/variable.scss';
+
+.bg-icon {
+  min-width: 40px;
+  width: 40px;
+  height: 40px;
+
+  &.unknow-file-icon {
+    background-image: url("/assets/images/icons/unknown-file.svg");
+  }
+
+  &.pdf-file-icon {
+    background-image: url("/assets/images/icons/pdf-file.svg");
+  }
+
+  &.csv-file-icon {
+    background-image: url("/assets/images/icons/csv-file.svg");
+  }
+  
+  &.xlsx-file-icon {
+    background-image: url("/assets/images/icons/xlsx-file.svg");
+  }
+
+  &.img-file-icon {
+    background-image: url("/assets/images/icons/img-file.svg");
+  }
+
+  &.icon-download {
+    margin-top: -6px;
+    margin-right: -6px;
+    min-width: 20px;
+    width: 20px;
+    height: 20px;
+    background-image: url("/assets/images/icons/gray/download-01.svg");
+
+    &.download-not-able {
+      background-image: unset;
+    }
+  }
+}

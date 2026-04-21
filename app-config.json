@@ -1,0 +1,24 @@
+{
+  "app": {
+    "title": "Product Store",
+    "textColor": {
+      "light": "black",
+      "dark": "white"
+    },
+    "statusBar": "transparent",
+    "actionBarHidden": true,
+    "hideIOSSafeAreaBottom": true,
+    "hideAndroidBottomNavigationBar": false
+  },
+  "listCSS": [],
+  "listSyncJS": [],
+  "listAsyncJS": [],
+  "pages": [
+    "/",
+    "/job/:id",
+    "/get-link/:id",
+    "/report",
+    "/profile",
+    "/ekyc"
+  ]
+}

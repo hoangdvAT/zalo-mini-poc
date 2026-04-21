@@ -1,0 +1,57 @@
+@import 'src/assets/scss/utils/_variable.scss';
+
+.campaign-container {
+  .c-header {
+    border-bottom: 1px solid #E9EAEB;
+  }
+
+  .c-nav {
+    .c-nav-head {
+      .c-nav-track-wrapper {
+        border-bottom: 1px solid #E9EAEB;
+        margin-bottom: 3px;
+        // overflow-x: auto;
+        
+        // &:hover {
+        //   overflow-x: auto;
+        // }
+      }
+
+      .c-nav-track {
+        color: $quaternary-500;
+
+        .c-nav-item {
+          &.active {
+            color: $utility-blue-600;
+            border-bottom: 2px solid $utility-blue-600;
+          }
+
+          &:not(.active):hover {
+            background-color: #F0F0F0;
+          }
+        }
+      }
+    }
+
+    .c-nav-body {
+      .nav-body {
+
+      }
+    }
+  }
+}
+
+::ng-deep {
+  // Giả OffCanvas
+  ngb-modal-window {
+    &.offcanvas-right {
+      &.campaign-detail-modal {
+        .modal-dialog {
+          max-width: 708px;
+          width: 100%;
+          padding: 20px;
+        }
+      }
+    }
+  }
+}

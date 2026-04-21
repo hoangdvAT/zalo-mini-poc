@@ -1,0 +1,10 @@
+@import 'src/assets/scss/utils/variable.scss';
+
+.normal-table-template-v2 {
+  &.referral-code-table-wrapper {
+    border-left: 1px solid $border-secondary;
+    border-right: 1px solid $border-secondary;
+    border-bottom: 1px solid $border-secondary;
+    border-radius: 8px;
+  }
+}

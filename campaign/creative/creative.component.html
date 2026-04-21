@@ -1,0 +1,40 @@
+<div *ngIf="campaignFiles?.length"
+  class="normal-table-template-v2 creative-table-wrapper">
+  <div class="d-flex flex-column gap-12px">
+    <div *ngFor="let file of campaignFiles"
+      class="d-flex justify-content-between align-items-center gap-12px p-16px rounded-12px v2-border-secondary"
+      [class.cursor-pointer]="file?.file"
+      (click)="file?.file && onDownload(file?.file)">
+      <div class="bg-icon unknow-file-icon"
+        [class.pdf-file-icon]="['pdf'].includes(file?.extendName)"
+        [class.csv-file-icon]="['csv'].includes(file?.extendName)"
+        [class.xlsx-file-icon]="['xlsx'].includes(file?.extendName)"
+        [class.img-file-icon]="['jpg', 'jpeg', 'png', 'gif'].includes(file?.extendName)">
+      </div>
+
+      <div class="flex-1 d-flex flex-column justify-content-between align-items-start gap-6px">
+        <p *ngIf="file?.file" class="mb-0 text-sm-medium v2-text-gray-700 character-break line-clamp-1"
+          style="-webkit-box-orient: vertical;"
+          [title]="file?.file">
+          {{ file?.file }}
+        </p>
+
+        <p *ngIf="file?.description" class="mb-0 text-sm-regular v2-text-tertiary-600 character-break line-clamp-1"
+          style="-webkit-box-orient: vertical;"
+          [title]="file?.description">
+          {{ file?.description }}
+        </p>
+      </div>
+      
+      <div class="bg-icon icon-download"
+        [class.download-not-able]="!file?.file">
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<div *ngIf="!campaignFiles?.length" class="d-flex flex-column justify-content-center align-items-center py-24px" style="min-height: 50px; gap: 20px">
+  <img class="no-result-empty-box" src="assets/images/empty-box.png" width="152">
+  <p class="w-100 text-md-semibold v2-text-primary-900 text-center">{{ "Empty data" | translate }}</p>
+</div>

@@ -1,0 +1,54 @@
+<div *ngIf="publisherRefCodes?.length"
+  class="normal-table-template-v2 referral-code-table-wrapper">
+  <div class="table-scroll">
+    <table class="w-100">
+      <thead>
+        <tr>
+          <th>
+            {{ "Ad Space" | translate }}
+          </th>
+          <th>
+            {{ "Referral Code" | translate }}
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let item of publisherRefCodes">
+          <td>
+            <div style="width: 150px">
+              <p class="mb-0 line-clamp-2" style="-webkit-box-orient: vertical;"
+                [title]="item.ad_space ? (item.ad_space.type ? (item.ad_space.type.name | translate) : '') : ''">
+                {{ item.ad_space ? (item.ad_space.type ? (item.ad_space.type.name | translate) : '') : ''  }}
+              </p>
+            </div>
+          </td>
+  
+          <td>
+            <div class="form-group w-100 mb-0" style="min-width: 150px;">
+              <div class="input-group d-flex flex-nowrap">
+                <input [value]="item.ref_code"
+                  [title]="item.ref_code"
+                  class="form-control form-control-sm text-sm-regular v2-text-tertiary text-break character-break line-clamp-1" style="-webkit-box-orient: vertical;"
+                  type="text"
+                  disabled>
+                <div class="input-group-append">
+                  <span class="input-group-text cursor-pointer"
+                    (click)="onCopy(item.ref_code)">
+                    <i class="bg-icon" [ngStyle]="{
+                      'background-image': 'url(assets/images/icons/gray/copy-01.png)'
+                    }"></i>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div *ngIf="!publisherRefCodes?.length" class="d-flex flex-column justify-content-center align-items-center py-24px" style="min-height: 50px; gap: 20px">
+  <img class="no-result-empty-box" src="assets/images/empty-box.png" width="152">
+  <p class="w-100 text-md-semibold v2-text-primary-900 text-center">{{ "Empty data" | translate }}</p>
+</div>

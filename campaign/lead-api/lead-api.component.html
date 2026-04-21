@@ -1,0 +1,337 @@
+<div class="lead-api-container d-flex flex-column gap-16px">
+  <div class="content-row v2-border-secondary rounded-12px">
+    <div class="form-group
+      d-flex flex-column justify-content-center align-items-start
+      flex-sm-row justify-content-sm-start align-items-sm-center
+      gap-8px px-3 px-sm-4 py-16px mb-0">
+      <label class="link-api-label mb-0 text-sm-semibold v2-text-primary">Link Api</label>
+      <input class="link-api-input form-control form-control-sm"
+        [value]="linkAPI"
+        type="text"
+        placeholder="Link Api"
+        [disabled]="true">
+    </div>
+  </div>
+
+  <div class="content-row v2-border-secondary rounded-12px overflow-hidden">
+    <div class="form-group
+      d-flex flex-column justify-content-center align-items-start
+      flex-sm-row justify-content-sm-start align-items-sm-center
+      gap-8px px-3 px-sm-4 py-16px mb-0">
+      <label class="lead-api-label mb-0 text-sm-semibold v2-text-primary">Lead Api</label>
+      <div class="input-group">
+        <textarea
+          [value]="leadApi"
+          class="lead-api-textarea form-control form-control-sm h-auto"
+          style="resize: none;"
+          type="text"
+          placeholder="Lead Api"
+          [rows]="3"
+          [disabled]="true">
+        </textarea>
+        <div class="input-group-append">
+          <span class="input-group-text cursor-pointer"
+            (click)="onCopyLeadApi()">
+            <i class="bg-icon" [ngStyle]="{
+              'background-image': 'url(assets/images/icons/gray/copy-01.png)'
+            }"></i>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div class="fields-grid" [formGroup]="frmLeadApi">
+      <div class="fields-row">
+        <div class="fields-cell v2-bg-secondary">
+          <p class="mb-0 text-xs-semibold v2-text-quaternary-500 text-start">
+            {{ "Param name" | translate }}
+          </p>
+        </div>
+        <div class="fields-cell v2-bg-secondary text-xs-semibold v2-text-quaternary-500">
+          <p class="w-100 mb-0 text-end">
+            {{ "Value" | translate }}
+          </p>
+        </div>
+      </div>
+
+      <div class="fields-row">
+        <div class="fields-cell">
+          <p class="mb-0 text-sm-medium v2-text-primary-900 text-start required">
+            campaign_id
+          </p>
+        </div>
+        <div class="fields-cell text-sm-regular v2-text-tertiary-600">
+          <p class="w-100 mb-0 text-end">
+            {{ campaign?.id }}
+          </p>
+        </div>
+      </div>
+
+      <div class="fields-row">
+        <div class="fields-cell">
+          <p class="mb-0 text-sm-medium v2-text-primary-900 text-start required">
+            ad_space_code
+          </p>
+        </div>
+        <div class="fields-cell text-sm-regular v2-text-tertiary-600">
+          <div class="w-100">
+            <ng-select formControlName="adSpace"
+              class="ng-select-ad-space"
+              [ngModel]="adSpaceDefault.code"
+              [items]="adSpaces"
+              bindLabel="title" bindValue="code"
+              [clearable]="false"
+              [placeholder]="'Select Ad Space' | translate"
+              appendTo="body"
+              [attr.title]="(adSpaceDefault.code | objectInArray : 'code' : adSpaces)?.title">
+              <ng-template ng-option-tmp let-item="item" let-search="searchTerm" let-clear="clear">
+                <p class="ng-option-label mb-0 text-wrap line-clamp-2" style="-webkit-box-orient: vertical;"
+                  [title]="item?.title">
+                  {{ item?.title }}
+                </p>
+              </ng-template>
+            </ng-select>
+          </div>
+        </div>
+      </div>
+
+      <div class="fields-row">
+        <div class="fields-cell">
+          <p class="mb-0 text-sm-medium v2-text-primary-900 text-start required">
+            token
+          </p>
+        </div>
+        <div class="fields-cell text-sm-regular v2-text-tertiary-600">
+          <p class="w-100 mb-0 text-end character-break line-clamp-1" style="-webkit-box-orient: vertical;">
+            {{ token }}
+          </p>
+        </div>
+      </div>
+
+      <div class="fields-row">
+        <div class="fields-cell">
+          <p class="mb-0 text-sm-medium v2-text-primary-900 text-start required">
+            name
+          </p>
+        </div>
+        <div class="fields-cell text-sm-regular v2-text-tertiary-600">
+          <p class="w-100 mb-0 text-end">
+            {{ "Customer Name" | translate }}
+          </p>
+        </div>
+      </div>
+
+      <div class="fields-row">
+        <div class="fields-cell">
+          <p class="mb-0 text-sm-medium v2-text-primary-900 text-start required">
+            phone
+          </p>
+        </div>
+        <div class="fields-cell text-sm-regular v2-text-tertiary-600">
+          <p class="w-100 mb-0 text-end">
+            {{ "Customer Phone" | translate }}
+          </p>
+        </div>
+      </div>
+
+      <div class="fields-row">
+        <div class="fields-cell">
+          <p class="mb-0 text-sm-medium v2-text-primary-900 text-start">
+            note<br>({{ "Optional" | translate }})
+          </p>
+        </div>
+        <div class="fields-cell text-sm-regular v2-text-tertiary-600">
+          <div class="form-group w-100 mb-0">
+            <input formControlName="note"
+              type="text" class="form-control form-control-sm"
+              [placeholder]="'Enter note' | translate">
+          </div>
+        </div>
+      </div>
+
+      <div class="fields-row">
+        <div class="fields-cell">
+          <p class="mb-0 text-sm-medium v2-text-primary-900 text-start">
+            {{ "Tracking Parameters" | translate }}<br>({{ "Optional" | translate }})
+          </p>
+        </div>
+        <div class="fields-cell tracking-params-cell text-xs-semibold v2-text-quaternary-500 fields-overflow-x-auto">
+          <div class="tracking-parameters-inputs full-td form-group d-flex justify-content-start align-items-center gap-12px mb-0">
+            <input formControlName="utmSource"
+              type="text" class="form-control form-control-sm"
+              placeholder="utm_source">
+
+            <input formControlName="utmCampaign"
+              type="text" class="form-control form-control-sm"
+              placeholder="utm_campaign">
+
+            <input formControlName="utmContent"
+              type="text" class="form-control form-control-sm"
+              placeholder="utm_content">
+
+            <input formControlName="utmMedium"
+              type="text" class="form-control form-control-sm"
+              placeholder="utm_medium">
+
+            <input formControlName="utmTerm"
+              type="text" class="form-control form-control-sm"
+              placeholder="utm_term">
+          </div>
+        </div>
+      </div>
+
+      <div class="fields-row">
+        <div class="fields-cell">
+          <p class="mb-0 text-sm-medium v2-text-primary-900 text-start">
+            {{ "Additional Tracking Parameters" | translate }}<br>({{ "Optional" | translate }})
+          </p>
+        </div>
+        <div class="fields-cell sub-params-cell text-xs-semibold v2-text-quaternary-500 fields-overflow-x-auto">
+          <div class="sub-parameters-inputs full-td form-group d-flex justify-content-start align-items-center gap-12px mb-0">
+            <input formControlName="sub"
+              type="text" class="form-control form-control-sm"
+              placeholder="sub">
+
+            <input formControlName="sub1"
+              type="text" class="form-control form-control-sm"
+              placeholder="sub_1">
+
+            <input formControlName="sub2"
+              type="text" class="form-control form-control-sm"
+              placeholder="sub_2">
+
+            <input formControlName="sub3"
+              type="text" class="form-control form-control-sm"
+              placeholder="sub_3">
+
+            <input formControlName="sub4"
+              type="text" class="form-control form-control-sm"
+              placeholder="sub_4">
+          </div>
+        </div>
+      </div>
+
+
+    </div>    
+
+    <!-- <div class="fields-table">
+      <div class="table-scroll">
+        <table class="main-table w-100" [formGroup]="frmLeadApi">
+          <thead class="bt-gray">
+            <tr>
+              <th class="param-name-col text-start">{{ "Param name" | translate }}</th>
+              <th class="value-col text-end">{{ "Value" | translate }}</th>
+            </tr>
+          </thead>
+      
+          <tbody>
+            <tr>
+              <td class="text-nowrap required">campaign_id</td>
+              <td class="text-end">{{ campaign?.id }}</td>
+            </tr>
+            
+            <tr>
+              <td>
+                <div class="d-flex align-items-center text-nowrap required" style="height: 40px;">
+                  ad_space_code
+                </div>
+              </td>
+              <td class="text-end">
+                <div class="ad-space-code-wrapper full-td">
+                  <ng-select formControlName="adSpace"
+                    [ngModel]="adSpaceDefault.code"
+                    [items]="adSpaces"
+                    bindLabel="title" bindValue="code"
+                    [placeholder]="'Select Ad Space' | translate"
+                    appendTo="body">
+                  </ng-select>
+                </div>
+              </td>
+            </tr>
+
+            <tr>
+              <td class="text-nowrap required">token</td>
+              <td class="character-break text-end">{{ token }}</td>
+            </tr>
+
+            <tr>
+              <td class="text-nowrap required">name</td>
+              <td class="text-end">{{ "Customer Name" | translate }}</td>
+            </tr>
+
+            <tr>
+              <td class="text-nowrap required">phone</td>
+              <td class="text-end">{{ "Customer Phone" | translate }}</td>
+            </tr>
+
+            <tr>
+              <td class="">note<br>({{ "Optional" | translate }})</td>
+              <td class="text-end">
+                <div class="form-group mb-0">
+                  <input formControlName="note"
+                    type="text" class="form-control form-control-sm"
+                    [placeholder]="'Enter note' | translate">
+                </div>
+              </td>
+            </tr>
+
+            <tr>
+              <td class="">{{ "Tracking Parameters" | translate }}<br>({{ "Optional" | translate }})</td>
+              <td class="text-end">
+                <div class="tracking-parameters-inputs full-td form-group d-flex justify-content-start align-items-center gap-12px mb-0 overflow-x-auto">
+                  <input formControlName="utmSource"
+                    type="text" class="form-control form-control-sm"
+                    placeholder="utm_source">
+
+                  <input formControlName="utmCampaign"
+                    type="text" class="form-control form-control-sm"
+                    placeholder="utm_campaign">
+
+                  <input formControlName="utmContent"
+                    type="text" class="form-control form-control-sm"
+                    placeholder="utm_content">
+
+                  <input formControlName="utmMedium"
+                    type="text" class="form-control form-control-sm"
+                    placeholder="utm_medium">
+
+                  <input formControlName="utmTerm"
+                    type="text" class="form-control form-control-sm"
+                    placeholder="utm_term">
+                </div>
+              </td>
+            </tr>
+
+            <tr>
+              <td class="">{{ "Additional Tracking Parameters" | translate }}<br>({{ "Optional" | translate }})</td>
+              <td class="text-end">
+                <div class="sub-parameters-inputs full-td form-group d-flex justify-content-start align-items-center gap-12px mb-0 overflow-x-auto">
+                  <input formControlName="sub"
+                    type="text" class="form-control form-control-sm"
+                    placeholder="sub">
+
+                  <input formControlName="sub1"
+                    type="text" class="form-control form-control-sm"
+                    placeholder="sub_1">
+
+                  <input formControlName="sub2"
+                    type="text" class="form-control form-control-sm"
+                    placeholder="sub_2">
+
+                  <input formControlName="sub3"
+                    type="text" class="form-control form-control-sm"
+                    placeholder="sub_3">
+
+                  <input formControlName="sub4"
+                    type="text" class="form-control form-control-sm"
+                    placeholder="sub_4">
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div> -->
+  </div>
+
+</div>
