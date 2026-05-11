@@ -24,23 +24,16 @@ import {
 } from "@/services/api";
 import { CampaignCard, type CampaignCardCtaMode } from "@/components/campaign";
 import {
-  getCampaignTypeBadge,
   getCampaignCommissionDisplay,
   resolveCtaModeFromCampaignListItem,
+  filterJoinTabCampaignsHasContract,
 } from "@/utils/campaignUi";
 import HomeHeader from "@/components/home/HomeHeader";
+import { IllustrationEmptySearch } from "@/components/icons/LineIllustrations";
 import OneClickSection from "@/components/home/OneClickSection";
 import { CampaignListSkeleton } from "@/components/base";
-import { formatDateRange, getCurrentMonthRangeYmd, getCurrentMonthCaptionVi } from "@/utils/format";
+import { formatDateRange, getCurrentMonthRangeYmd } from "@/utils/format";
 import type { Campaign } from "@/types/campaign";
-
-/** Home "Đã tham gia": chỉ card Chờ phản hồi / Tạo link — ẩn trạng thái Tham gia (chưa có HĐ). */
-function filterJoinedCampaignsForList(campaigns: Campaign[]): Campaign[] {
-  return campaigns.filter((c) => {
-    const mode = resolveCtaModeFromCampaignListItem(c);
-    return mode === "pending" || mode === "create-link" || mode === "rejected";
-  });
-}
 
 const FireIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -70,8 +63,12 @@ const HomePage: React.FC = () => {
     pendingBalance: 0,
   });
 
-  /** Flow web: lọc chiến dịch đã tham gia */
+  /** Flow web: lọc chiến dịch đã tham gia (chỉ khi đã đăng nhập) */
   const [showJoinedOnly, setShowJoinedOnly] = useState(false);
+
+  useEffect(() => {
+    if (isGuest && showJoinedOnly) setShowJoinedOnly(false);
+  }, [isGuest, showJoinedOnly]);
 
     useEffect(() => {
       if (isGuest) return;
@@ -119,7 +116,8 @@ const HomePage: React.FC = () => {
           page,
           name: searchQuery || undefined,
           category_ids: selectedCategoryId ? [selectedCategoryId] : undefined,
-          sort: "label,0",
+          /** Portal `getPublisherCampaigns(..., page, '')` — sort rỗng */
+          sort: "",
           myCampaignScope: true,
         });
       }
@@ -143,7 +141,7 @@ const HomePage: React.FC = () => {
     try {
       const result = await fetchCampaignPage(1);
       const raw = result.campaigns || [];
-      const display = showJoinedOnly ? filterJoinedCampaignsForList(raw) : raw;
+      const display = showJoinedOnly ? filterJoinTabCampaignsHasContract(raw) : raw;
       setCampaigns(display);
       const meta = result.meta;
       const lastPage = Math.max(meta.last_page || 1, 1);
@@ -184,9 +182,7 @@ const HomePage: React.FC = () => {
         setNoMore(true);
         return;
       }
-      const toAppend = showJoinedOnly
-        ? filterJoinedCampaignsForList(rawList)
-        : rawList;
+      const toAppend = showJoinedOnly ? filterJoinTabCampaignsHasContract(rawList) : rawList;
       setCampaigns((prev) => {
         const seen = new Set(prev.map((c) => c.id));
         const merged = [...prev];
@@ -304,18 +300,20 @@ const HomePage: React.FC = () => {
     const dateRange = formatDateRange(campaign.started_at, campaign.ended_at || undefined);
     const ctaMode = resolveCardCta(campaign);
 
-    return {
-      id: campaign.id.toString(),
-      imageUrl,
-      title: campaign.name,
-      typeBadge: getCampaignTypeBadge(campaign),
-      commissionDisplay: getCampaignCommissionDisplay(campaign),
-      isGuest,
-      dateRange: dateRange || undefined,
-      ctaMode,
-      contractsLoading: false,
-      onCardClick: () => navigate(`/job/${campaign.id}`),
-    };
+        return {
+          id: campaign.id.toString(),
+          imageUrl,
+          title: campaign.name,
+          typeBadge: "",
+          commissionDisplay: getCampaignCommissionDisplay(campaign),
+          isGuest,
+          dateRange: dateRange || undefined,
+          ctaMode,
+          variant: "home" as const,
+          contractsLoading: false,
+          onCardClick: () => navigate(`/job/${campaign.id}`),
+          onJoinSuccess: reloadCampaigns,
+        };
   };
 
   return (
@@ -324,7 +322,6 @@ const HomePage: React.FC = () => {
           balance={incomeData.balance}
           approvedBalance={incomeData.approvedBalance}
           pendingBalance={incomeData.pendingBalance}
-          statsScopeHint={`Số liệu ${getCurrentMonthCaptionVi()}`}
           isGuest={isGuest}
         />
 
@@ -336,29 +333,63 @@ const HomePage: React.FC = () => {
           onLogin={handleOneClickLogin}
           onShare={handleOneClickShare}
         />
-        <div className="home-campaigns-toolbar">
+        <div className="home-campaigns-toolbar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <FireIcon />
-            <Text.Title size="large" style={{ fontWeight: 700, margin: 0, color: "#1A1A2E" }}>
+            <Text.Title size="normal" style={{ fontWeight: 700, margin: 0, color: "#1A1A2E" }}>
               Chiến dịch hot
             </Text.Title>
           </div>
-          <label className="home-joined-toggle">
-            <input
-              type="checkbox"
-              checked={showJoinedOnly}
-              onChange={(e) => setShowJoinedOnly(e.target.checked)}
-            />
-            <span className="home-joined-toggle__slider" />
-            <span className="home-joined-toggle__label">Đã tham gia</span>
-          </label>
+          {!isGuest && (
+            <div 
+              style={{
+                display: "flex",
+                background: "#F3F4F6",
+                borderRadius: 20,
+                padding: 2,
+                fontSize: 13,
+                fontWeight: 600,
+              }}
+            >
+              <div
+                onClick={() => setShowJoinedOnly(false)}
+                style={{
+                  padding: "4px 12px",
+                  borderRadius: 18,
+                  cursor: "pointer",
+                  color: !showJoinedOnly ? "#FFF" : "#6B7280",
+                  background: !showJoinedOnly ? "#EF4A22" : "transparent",
+                  transition: "all 0.2s ease",
+                  boxShadow: !showJoinedOnly ? "0 2px 4px rgba(239, 74, 34, 0.2)" : "none"
+                }}
+              >
+                Tất cả
+              </div>
+              <div
+                onClick={() => setShowJoinedOnly(true)}
+                style={{
+                  padding: "4px 12px",
+                  borderRadius: 18,
+                  cursor: "pointer",
+                  color: showJoinedOnly ? "#FFF" : "#6B7280",
+                  background: showJoinedOnly ? "#EF4A22" : "transparent",
+                  transition: "all 0.2s ease",
+                  boxShadow: showJoinedOnly ? "0 2px 4px rgba(239, 74, 34, 0.2)" : "none"
+                }}
+              >
+                Đã tham gia
+              </div>
+            </div>
+          )}
         </div>
 
         {loading ? (
           <CampaignListSkeleton />
         ) : campaigns.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-state__icon">🔍</div>
+            <div className="empty-state__icon" aria-hidden>
+              <IllustrationEmptySearch />
+            </div>
             <Text size="normal" className="empty-state__text">
               Không tìm thấy chiến dịch nào
             </Text>

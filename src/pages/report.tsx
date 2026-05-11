@@ -7,6 +7,9 @@ import { conversionsAtom, loadingReportAtom } from "@/state/job";
 import {
     fetchConversions,
     fetchCampaignsWithContract,
+    fetchReportOverview,
+    fetchConversionDetail,
+    fetchCampaignById,
     type PublisherConversionListMeta,
 } from "@/services/api";
 import { DataCard } from "@/components/display";
@@ -87,8 +90,39 @@ const ReportPage: React.FC = () => {
 
     // Selected conversion for detail modal
     const [selectedConversion, setSelectedConversion] = useState<any>(null);
+    const [isDetailLoading, setIsDetailLoading] = useState(false);
     const [expandedUtm, setExpandedUtm] = useState(false);
     const [expandedSub, setExpandedSub] = useState(false);
+
+    const handleConversionClick = async (conv: any) => {
+        setSelectedConversion(conv); // show list data temporarily
+        setIsDetailLoading(true);
+        setExpandedUtm(false);
+        setExpandedSub(false);
+        try {
+            const detailRes = await fetchConversionDetail(conv.conversion_id || conv.id);
+            let merged = { ...conv };
+            if (detailRes) {
+                // If detailRes is wrapped in { conversion: ... } or is the object itself
+                const detailData = detailRes.conversion ? detailRes.conversion : detailRes;
+                merged = { ...merged, ...detailData };
+            }
+
+            // Fetch campaign to get campaign_name if not available
+            if (merged.campaign_id && (!merged.click_detail?.campaign_name && !merged.cal_commission?.campaign_name && !merged.campaign_name)) {
+                const campaignRes = await fetchCampaignById(merged.campaign_id);
+                if (campaignRes && campaignRes.name) {
+                    merged.campaign_name = campaignRes.name;
+                }
+            }
+
+            setSelectedConversion(merged);
+        } catch (e) {
+            console.error("Lỗi tải chi tiết đơn hàng", e);
+        } finally {
+            setIsDetailLoading(false);
+        }
+    };
 
     // Campaign Search & List
     const [campaignList, setCampaignList] = useState<any[]>([]);
@@ -386,19 +420,13 @@ const ReportPage: React.FC = () => {
                                             <div
                                                 key={conv.conversion_id || i}
                                                 className="report-order-card"
-                                                onClick={() => {
-                                                    setSelectedConversion(conv);
-                                                    setExpandedUtm(false);
-                                                    setExpandedSub(false);
-                                                }}
+                                                onClick={() => handleConversionClick(conv)}
                                                 role="button"
                                                 tabIndex={0}
                                                 onKeyDown={(e) => {
                                                     if (e.key === "Enter" || e.key === " ") {
                                                         e.preventDefault();
-                                                        setSelectedConversion(conv);
-                                                        setExpandedUtm(false);
-                                                        setExpandedSub(false);
+                                                        handleConversionClick(conv);
                                                     }
                                                 }}
                                             >
@@ -420,8 +448,8 @@ const ReportPage: React.FC = () => {
                                                     </div>
                                                     <div className="report-order-card__metric">
                                                         <span className="report-order-card__metric-label">Hoa hồng</span>
-                                                        <span className="report-order-card__metric-value report-order-card__metric-value--commission">
-                                                            {formatNumber(commAmount)} đ
+                                                        <span className={`report-order-card__metric-value report-order-card__metric-value--commission ${statusClass}`}>
+                                                            {statusClass !== 'rejected' && commAmount > 0 ? '+' : ''}{formatNumber(commAmount)} đ
                                                             {commPct ? <small className="report-order-card__pct">{commPct}</small> : null}
                                                         </span>
                                                     </div>
@@ -832,21 +860,15 @@ const ReportPage: React.FC = () => {
                 autoHeight
                 zIndex={BODY_OVERLAY_Z_INDEX}
             >
-                <div className="filter-sheet-header conv-detail-sheet-header" style={{ flexDirection: 'column', alignItems: 'flex-start', paddingRight: 40, position: 'relative' }}>
-                    <Text.Title className="filter-sheet-header__title" style={{ wordBreak: 'break-all', paddingRight: 8 }}>{selectedConversion?.order_id || 'Chi tiết đơn hàng'}</Text.Title>
-                    <Text size="small" style={{ color: '#666', marginTop: 4 }}>{selectedConversion?.cal_commission?.campaign_name || selectedConversion?.cal_commission?.campaign_code || "-"}</Text>
-                    <div
-                        onClick={() => { setSelectedConversion(null); setExpandedUtm(false); setExpandedSub(false); }}
-                        style={{ position: 'absolute', right: 16, top: 16, padding: 8 }}
-                    >
-                        <Icon icon="zi-close" />
-                    </div>
+                <div className="conv-detail-sheet-header">
+                    <Text.Title style={{ fontSize: 18, marginBottom: 4 }}>Chi tiết đơn hàng</Text.Title>
+                    <Text size="small" style={{ color: '#667085' }}>{selectedConversion?.order_id || '—'}</Text>
                 </div>
-                <Box className="filter-sheet-content conv-detail-sheet-body" p={4} pb={6} style={{ maxHeight: '80vh', overflowY: 'auto', overflowX: 'hidden', background: '#f4f5f6' }}>
+                <Box className="conv-detail-sheet-body" p={4} pb={6} style={{ maxHeight: '80vh', overflowY: 'auto', overflowX: 'hidden', background: '#f4f5f6' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-                        <div style={{ background: '#fff', borderRadius: 8, padding: 12 }}>
-                            <Text size="small" style={{ color: '#666', marginBottom: 4 }}>Hoa hồng (publisher)</Text>
-                            <Text size="large" bold style={{ color: '#111' }}>{formatNumber(getPublisherCommissionAmount(selectedConversion || {}))} đ</Text>
+                        <div style={{ background: '#fff', borderRadius: 12, padding: 16 }}>
+                            <Text size="small" style={{ color: '#667085', marginBottom: 4 }}>Hoa hồng (publisher)</Text>
+                            <Text size="large" bold style={{ color: '#039855' }}>+{formatNumber(getPublisherCommissionAmount(selectedConversion || {}))} đ</Text>
                             {(() => {
                                 const c = selectedConversion || {};
                                 const pct = getCommissionPercentLabel(c, getPublisherCommissionAmount(c));
@@ -855,138 +877,126 @@ const ReportPage: React.FC = () => {
                                 ) : null;
                             })()}
                         </div>
-                        <div style={{ background: '#fff', borderRadius: 8, padding: 12 }}>
-                            <Text size="small" style={{ color: '#666', marginBottom: 4 }}>Giá trị đơn hàng</Text>
-                            <Text size="large" bold style={{ color: '#111' }}>{formatNumber(getSaleAmount(selectedConversion || {}))} đ</Text>
+                        <div style={{ background: '#fff', borderRadius: 12, padding: 16 }}>
+                            <Text size="small" style={{ color: '#667085', marginBottom: 4 }}>Giá trị đơn hàng</Text>
+                            <Text size="large" bold style={{ color: '#111827' }}>{formatNumber(getSaleAmount(selectedConversion || {}))} đ</Text>
                         </div>
                     </div>
 
-                    <div style={{ background: '#fff', borderRadius: 8, padding: '0 12px', marginBottom: 12 }}>
+                    <div className="conv-detail-section">
                         <div className="conv-detail-row">
-                            <span className="conv-detail-label">Trạng thái:</span>
-                            <span className="conv-detail-value bold">{statusMap[String(selectedConversion?.status)] || selectedConversion?.status || "—"}</span>
-                        </div>
-                        <div className="conv-detail-row conv-detail-row--top">
-                            <span className="conv-detail-label">Lý do:</span>
-                            <span className="conv-detail-value">{getConversionReasonText(selectedConversion || {})}</span>
-                        </div>
-                        <div className="conv-detail-row">
-                            <span className="conv-detail-label">Tổng số lượng:</span>
-                            <span className="conv-detail-value bold">{getConversionQuantitySum(selectedConversion || {})}</span>
+                            <span className="conv-detail-row__label">Trạng thái</span>
+                            <span className="conv-detail-row__value" style={{
+                                color: selectedConversion?.status === 'approved' ? '#039855' :
+                                       selectedConversion?.status === 'pre_approved' ? '#b05c0d' :
+                                       selectedConversion?.status === 'rejected' ? '#d92d20' : '#006ce6'
+                            }}>{statusMap[String(selectedConversion?.status)] || selectedConversion?.status || "—"}</span>
                         </div>
                         <div className="conv-detail-row">
-                            <span className="conv-detail-label">Link affiliate:</span>
-                            <span className="conv-detail-value link" style={{ color: '#0068ff', wordBreak: 'break-all' }}>-</span>
+                            <span className="conv-detail-row__label">Lý do</span>
+                            <span className="conv-detail-row__value" style={{ fontWeight: 400 }}>{getConversionReasonText(selectedConversion || {})}</span>
                         </div>
                         <div className="conv-detail-row">
-                            <span className="conv-detail-label">Mã giới thiệu:</span>
-                            <span className="conv-detail-value link" style={{ color: '#0068ff' }}>-</span>
+                            <span className="conv-detail-row__label">Tổng số lượng</span>
+                            <span className="conv-detail-row__value">{getConversionQuantitySum(selectedConversion || {})}</span>
                         </div>
                         <div className="conv-detail-row">
-                            <span className="conv-detail-label">Tên chiến dịch:</span>
-                            <span className="conv-detail-value bold">{selectedConversion?.cal_commission?.campaign_name || selectedConversion?.cal_commission?.campaign_code || "-"}</span>
+                            <span className="conv-detail-row__label">Tên chiến dịch</span>
+                            <span className="conv-detail-row__value">{selectedConversion?.campaign_name || selectedConversion?.click_detail?.campaign_name || selectedConversion?.cal_commission?.campaign_name || selectedConversion?.cal_commission?.campaign_code || "—"}</span>
                         </div>
-                        <div className="conv-detail-row conv-detail-row--top">
-                            <span className="conv-detail-label">User-Agent:</span>
-                            <span className="conv-detail-value" style={{ fontSize: 11 }}>
-                                {selectedConversion?.user_agent?.trim() || "—"}
+                        <div className="conv-detail-row">
+                            <span className="conv-detail-row__label">Mã giới thiệu</span>
+                            <span className="conv-detail-row__value">{selectedConversion?.pub_utm_param?.sub || selectedConversion?.publisher_name || "—"}</span>
+                        </div>
+                        <div className="conv-detail-row">
+                            <span className="conv-detail-row__label">Nền tảng thiết bị</span>
+                            <span className="conv-detail-row__value" style={{ fontWeight: 400 }}>
+                                {selectedConversion?.click_detail?.client?.deviceOs ? `${selectedConversion.click_detail.client.deviceOs}${selectedConversion.click_detail.client.deviceType ? `, ${selectedConversion.click_detail.client.deviceType}` : ''}` : "—"}
                             </span>
                         </div>
                         <div className="conv-detail-row">
-                            <span className="conv-detail-label">Ngày phát sinh click:</span>
-                            <span className="conv-detail-value bold">{selectedConversion?.click_detail?.click_time?.replace('T', ' ')?.split('+')[0] || "-"}</span>
+                            <span className="conv-detail-row__label">Trình duyệt</span>
+                            <span className="conv-detail-row__value" style={{ fontWeight: 400 }}>
+                                {selectedConversion?.click_detail?.client?.deviceBrowserName || selectedConversion?.user_agent || "—"}
+                            </span>
                         </div>
-                        <div className="conv-detail-row" style={{ borderBottom: 'none' }}>
-                            <span className="conv-detail-label">Ngày đặt hàng:</span>
-                            <span className="conv-detail-value bold">{selectedConversion?.action_date_time?.replace('T', ' ')?.split('+')[0] || "-"}</span>
+                        <div className="conv-detail-row" style={{ flexDirection: 'column', gap: 8 }}>
+                            <span className="conv-detail-row__label">Link affiliate</span>
+                            <span className="conv-detail-row__value conv-detail-row__value--link" style={{ fontSize: 13, textAlign: 'left', fontWeight: 400 }}>
+                                {selectedConversion?.click_detail?.click_uri || selectedConversion?.click_detail?.target_uri || "—"}
+                            </span>
                         </div>
-                    </div>
-
-                    <div style={{ background: '#fff', borderRadius: 8, padding: '0 12px', marginBottom: 12 }}>
-                        <div className="conv-detail-collapsible-header" onClick={() => setExpandedUtm(!expandedUtm)}>
-                            <Text size="normal">utm</Text>
-                            <Icon icon={expandedUtm ? "zi-chevron-up" : "zi-chevron-down"} />
+                        <div className="conv-detail-row">
+                            <span className="conv-detail-row__label">Ngày click</span>
+                            <span className="conv-detail-row__value" style={{ fontWeight: 400 }}>{selectedConversion?.click_detail?.click_time?.replace('T', ' ')?.split('+')[0] || "—"}</span>
                         </div>
-                        {expandedUtm && (
-                            <div className="conv-detail-collapsible-content">
-                                <div className="conv-detail-row">
-                                    <span className="conv-detail-label">utm_campaign:</span>
-                                    <span className="conv-detail-value">{selectedConversion?.pub_utm_param?.utm_campaign || "-"}</span>
-                                </div>
-                                <div className="conv-detail-row">
-                                    <span className="conv-detail-label">utm_content:</span>
-                                    <span className="conv-detail-value">{selectedConversion?.pub_utm_param?.utm_content || "-"}</span>
-                                </div>
-                                <div className="conv-detail-row">
-                                    <span className="conv-detail-label">utm_medium:</span>
-                                    <span className="conv-detail-value">{selectedConversion?.pub_utm_param?.utm_medium || "-"}</span>
-                                </div>
-                                <div className="conv-detail-row">
-                                    <span className="conv-detail-label">utm_source:</span>
-                                    <span className="conv-detail-value">{selectedConversion?.pub_utm_param?.utm_source || "-"}</span>
-                                </div>
-                                <div className="conv-detail-row" style={{ borderBottom: 'none' }}>
-                                    <span className="conv-detail-label">utm_term:</span>
-                                    <span className="conv-detail-value">{selectedConversion?.pub_utm_param?.utm_term || "-"}</span>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    <div style={{ background: '#fff', borderRadius: 8, padding: '0 12px', marginBottom: 12 }}>
-                        <div className="conv-detail-collapsible-header" onClick={() => setExpandedSub(!expandedSub)}>
-                            <Text size="normal">sub</Text>
-                            <Icon icon={expandedSub ? "zi-chevron-up" : "zi-chevron-down"} />
+                        <div className="conv-detail-row">
+                            <span className="conv-detail-row__label">Ngày đặt hàng</span>
+                            <span className="conv-detail-row__value" style={{ fontWeight: 400 }}>{selectedConversion?.action_date_time?.replace('T', ' ')?.split('+')[0] || "—"}</span>
                         </div>
-                        {expandedSub && (
-                            <div className="conv-detail-collapsible-content">
-                                <div className="conv-detail-row">
-                                    <span className="conv-detail-label">sub:</span>
-                                    <span className="conv-detail-value">{selectedConversion?.pub_utm_param?.sub || "-"}</span>
-                                </div>
-                                <div className="conv-detail-row">
-                                    <span className="conv-detail-label">sub1:</span>
-                                    <span className="conv-detail-value">{selectedConversion?.pub_utm_param?.sub1 || "-"}</span>
-                                </div>
-                                <div className="conv-detail-row">
-                                    <span className="conv-detail-label">sub2:</span>
-                                    <span className="conv-detail-value">{selectedConversion?.pub_utm_param?.sub2 || "-"}</span>
-                                </div>
-                                <div className="conv-detail-row">
-                                    <span className="conv-detail-label">sub3:</span>
-                                    <span className="conv-detail-value">{selectedConversion?.pub_utm_param?.sub3 || "-"}</span>
-                                </div>
-                                <div className="conv-detail-row" style={{ borderBottom: 'none' }}>
-                                    <span className="conv-detail-label">sub4:</span>
-                                    <span className="conv-detail-value">{selectedConversion?.pub_utm_param?.sub4 || "-"}</span>
-                                </div>
-                                {/* <div className="conv-detail-row" style={{ borderBottom: 'none' }}>
-                                    <span className="conv-detail-label">sub5:</span>
-                                    <span className="conv-detail-value">{selectedConversion?.pub_utm_param?.sub5 || "-"}</span>
-                                </div> */}
-                            </div>
-                        )}
                     </div>
 
                     {selectedConversion?.conversion_parts && selectedConversion.conversion_parts.length > 0 && (
-                        <div className="conv-detail-product-card" style={{ background: '#fff', borderRadius: 8, padding: 12 }}>
-                            <Text size="normal" bold style={{ marginBottom: 12, display: 'block' }}>Danh sách sản phẩm</Text>
-                            <div className="report-table-wrapper" style={{ margin: '0 -12px' }}>
-                                <div className="report-table">
-                                    <div className="report-table__header" style={{ background: '#f9f9f9', padding: '8px 12px' }}>
-                                        <div className="report-table__col report-table__col--small">SKU</div>
-                                        <div className="report-table__col report-table__col--large">Tên sản phẩm</div>
-                                        <div className="report-table__col report-table__col--small" style={{ width: 70 }}>SL</div>
-                                        <div className="report-table__col">Giá trị</div>
+                        <div className="conv-detail-section">
+                            <Text size="normal" bold style={{ marginBottom: 12, display: 'block', color: '#111827' }}>Danh sách sản phẩm</Text>
+                            <div className="report-table-wrapper" style={{ margin: '0 -16px', overflowX: 'auto', borderTop: '1px solid #edf0f2', borderBottom: 'none' }}>
+                                <div className="report-table" style={{ minWidth: 800, display: 'flex', flexDirection: 'column' }}>
+                                    <div className="report-table__header" style={{ display: 'flex', background: '#f9fafb', padding: '12px 16px', fontSize: 13, color: '#6b7280', fontWeight: 600, alignItems: 'center' }}>
+                                        <div style={{ width: 40, flexShrink: 0 }}>ID</div>
+                                        <div style={{ width: 80, flexShrink: 0 }}>SKU</div>
+                                        <div style={{ flex: 1, minWidth: 150 }}>Tên sản phẩm</div>
+                                        <div style={{ width: 80, textAlign: 'center', flexShrink: 0 }}>Số lượng</div>
+                                        <div style={{ width: 140, flexShrink: 0 }}>Nhóm hàng</div>
+                                        <div style={{ width: 110, textAlign: 'center', flexShrink: 0 }}>Trạng thái</div>
+                                        <div style={{ width: 110, textAlign: 'right', flexShrink: 0 }}>Giá trị đơn hàng</div>
                                     </div>
-                                    {selectedConversion.conversion_parts.map((p: any, i: number) => (
-                                        <div key={i} className="report-table__row" style={{ padding: '8px 12px' }}>
-                                            <div className="report-table__col report-table__col--small report-table__col--bold">{p.sku || p.product_sku || "-"}</div>
-                                            <div className="report-table__col report-table__col--large" style={{ color: '#0068ff' }}>{p.name || p.product_name || "-"}</div>
-                                            <div className="report-table__col report-table__col--small" style={{ width: 70 }}>{p.quantity ?? p.qty ?? 1}</div>
-                                            <div className="report-table__col">{formatNumber(getPartLineAmount(p))} đ</div>
-                                        </div>
-                                    ))}
+                                    {selectedConversion.conversion_parts.map((p: any, i: number) => {
+                                        const pStatus = p.status || selectedConversion?.status;
+                                        const statusText = statusMap[String(pStatus)] || pStatus || "—";
+                                        
+                                        let statusColor = '#006ce6';
+                                        let statusBg = '#e6f0ff';
+                                        let statusBorder = '#b3d4ff';
+                                        
+                                        if (pStatus === 'approved') {
+                                            statusColor = '#039855';
+                                            statusBg = '#ecfdf3';
+                                            statusBorder = '#a6f4c5';
+                                        } else if (pStatus === 'pre_approved' || pStatus === 'pending') {
+                                            statusColor = '#b05c0d';
+                                            statusBg = '#fef0c7';
+                                            statusBorder = '#fec84b';
+                                        } else if (pStatus === 'rejected') {
+                                            statusColor = '#d92d20';
+                                            statusBg = '#fef3f2';
+                                            statusBorder = '#fec3e6';
+                                        }
+
+                                        return (
+                                            <div key={i} className="report-table__row" style={{ display: 'flex', padding: '16px', borderBottom: '1px solid #f3f4f6', alignItems: 'center' }}>
+                                                <div style={{ width: 40, flexShrink: 0, fontSize: 13, color: '#111827', fontWeight: 500 }}>{i + 1}</div>
+                                                <div style={{ width: 80, flexShrink: 0, fontSize: 13, color: '#6b7280' }}>{p.sku || p.product_sku || "—"}</div>
+                                                <div style={{ flex: 1, minWidth: 150, fontSize: 13, color: '#006ce6', fontWeight: 500, paddingRight: 16 }}>{p.name || p.product_name || "—"}</div>
+                                                <div style={{ width: 80, flexShrink: 0, textAlign: 'center', fontSize: 13, color: '#111827' }}>{p.quantity ?? p.qty ?? 1}</div>
+                                                <div style={{ width: 140, flexShrink: 0, fontSize: 13, color: '#6b7280', paddingRight: 16 }}>{p.category || p.category_name || "—"}</div>
+                                                <div style={{ width: 110, flexShrink: 0, textAlign: 'center' }}>
+                                                    <span style={{ 
+                                                        display: 'inline-block', 
+                                                        padding: '4px 10px', 
+                                                        borderRadius: 16, 
+                                                        border: `1px solid ${statusBorder}`, 
+                                                        background: statusBg, 
+                                                        color: statusColor, 
+                                                        fontSize: 11, 
+                                                        fontWeight: 500 
+                                                    }}>
+                                                        {statusText}
+                                                    </span>
+                                                </div>
+                                                <div style={{ width: 110, flexShrink: 0, textAlign: 'right', fontSize: 13, color: '#111827', fontWeight: 500 }}>{formatNumber(getPartLineAmount(p))} đ</div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         </div>

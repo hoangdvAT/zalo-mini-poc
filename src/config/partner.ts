@@ -68,4 +68,11 @@ export const partnerConfig: Record<PartnerId, PartnerConfig> = {
 };
 
 /** Paths ẩn bottom nav */
-export const hideNavPaths = ["/job/", "/get-link/", "/ekyc", "/login", "/profile-update"];
+export const hideNavPaths = [
+  "/job/",
+  "/get-link/",
+  "/ekyc",
+  "/e-contract",
+  "/login",
+  "/profile-update",
+];

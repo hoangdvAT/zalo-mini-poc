@@ -1,7 +1,9 @@
-import React, { useCallback } from "react";
-import { Text, useNavigate } from "zmp-ui";
+import React, { useCallback, useState } from "react";
+import { Text, useNavigate, useSnackbar, Modal, Button } from "zmp-ui";
 import { LinkChainIcon } from "@/components/icons/LinkChainIcon";
 import { fetchJoinCampaign } from "@/services/api";
+import { applyJoinCampaignResponse } from "@/utils/joinCampaignFlow";
+import iconShare from "@/static/icons/share-06.svg";
 
 export type CampaignCardCtaMode = "join" | "pending" | "create-link" | "rejected";
 
@@ -27,6 +29,7 @@ export interface CampaignCardProps {
   typeBadge: string;
   /** Phần hiển thị sau "Hoa hồng" — ví dụ 1.230.009 đ hoặc 12% */
   commissionDisplay: string;
+  variant?: "default" | "home";
   isGuest?: boolean;
   dateRange?: string;
   /** Khi đã đăng nhập: join / chờ duyệt / tạo link */
@@ -34,6 +37,8 @@ export interface CampaignCardProps {
   /** Khi đã tham gia & đang gọi API contract */
   contractsLoading?: boolean;
   onCardClick?: () => void;
+  /** Sau join thành công — reload list (giống `getCampaigns` trên portal web). */
+  onJoinSuccess?: () => void;
 }
 
 const CampaignCard: React.FC<CampaignCardProps> = ({
@@ -42,13 +47,21 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
   title,
   typeBadge,
   commissionDisplay,
+  variant = "default",
   isGuest,
   dateRange,
   ctaMode,
   contractsLoading,
   onCardClick,
+  onJoinSuccess,
 }) => {
   const navigate = useNavigate();
+  const { openSnackbar } = useSnackbar();
+  const [joinSubmitting, setJoinSubmitting] = useState(false);
+  const [adSpaceModal, setAdSpaceModal] = useState<{ open: boolean; message: string }>({
+    open: false,
+    message: "",
+  });
 
   const handleCardClick = useCallback(
     (e: React.MouseEvent) => {
@@ -59,75 +72,58 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
   );
 
   const handleCta = useCallback(
-    (e: React.MouseEvent) => {
+    async (e: React.MouseEvent) => {
       e.stopPropagation();
-      if (contractsLoading) return;
+      if (contractsLoading || joinSubmitting) return;
       if (isGuest) {
         navigate(`/login?redirect=/job/${id}`);
         return;
       }
       if (ctaMode === "join") {
-        // navigate(`/job/${id}`);
-        // return;
-
-        fetchJoinCampaign({ campaign_id: id })
-        .then((res) => {
-          if (res.status === 'fail') {
-            const typeData = typeof res.data.check;
-            if (typeData === 'object') {
-              if (res.data.check.total > 0) {
-                if (res.data.check.pending > 0) {
-                  // TODO
-                  // alert('info', "Hiện tại Adspace của bạn đang ở trạng thái chờ duyệt và sẽ xử lý trong vòng 24h");
-                } else {
-                  // TODO
-                  // alert("infor", "Bạn chưa có AdSpaces. Vui lòng tạo AdSpaces để được tham gia chiến dịch");
-                  // TODO
-                  // Show alert với 2 btn "Tạo ad-space", "Đóng"
-                  // Nhấn "Tạo ad-space" thì Chuyển tới màn ad-space
-                }
-              } else {
-                // TODO
-                // alert("infor", "Bạn chưa có AdSpaces. Vui lòng tạo AdSpaces để được tham gia chiến dịch");
-                // TODO
-                // Show alert với 2 btn "Tạo ad-space", "Đóng"
-                // Nhấn "Tạo ad-space" thì Chuyển tới màn ad-space
-              }
-            } else if (typeData === 'undefined') {
-              // TODO
-              // alert('error', "Bạn không có quyền tham gia chiến dịch");
-            }
-          } else if (res.status === 'error') {
-            if (res.errorCode && res.errorCode === 403) {
-              // TODO
-              // alert('error', res.message);
-            } else {
-              // TODO
-              // alert('success', "Bạn đã tham gia chiến dịch thất bại.");
-            }
-          } else {
-            // TODO
-            // alert('success', "Bạn đã tham gia chiến dịch thành công.");
-    
-            // TODO: fetch lại list chiến dịch hoặc cập nhật lại hiển thị nút
-          }
-        })
-        .catch(() => {
-          // TODO Something
-        })
+        setJoinSubmitting(true);
+        try {
+          const res = await fetchJoinCampaign({ campaign_id: id });
+          await applyJoinCampaignResponse(res, {
+            openSnackbar: ({ type, text, duration }) =>
+              openSnackbar({ type, text, duration: duration ?? 3500 }),
+            navigate,
+            onSuccess: onJoinSuccess,
+            onNeedAdSpace: (message) => setAdSpaceModal({ open: true, message }),
+          });
+        } catch {
+          openSnackbar({
+            type: "error",
+            text: "Có lỗi xảy ra. Vui lòng thử lại.",
+            duration: 3500,
+          });
+        } finally {
+          setJoinSubmitting(false);
+        }
+        return;
       }
       if (ctaMode === "create-link") {
         navigate(`/get-link/${id}`);
-        return;
       }
     },
-    // TODO: Something
-    [contractsLoading, id, isGuest, ctaMode, navigate]
+    [
+      contractsLoading,
+      joinSubmitting,
+      id,
+      isGuest,
+      ctaMode,
+      navigate,
+      openSnackbar,
+      onJoinSuccess,
+    ]
   );
 
+  const ctaBusy = Boolean(contractsLoading || joinSubmitting);
+  const useHomeShareCta = variant === "home" && (isGuest || ctaMode === "create-link");
+
   return (
+    <>
     <div
-      className="campaign-card"
+      className={["campaign-card", variant === "home" ? "campaign-card--home" : ""].filter(Boolean).join(" ")}
       onClick={onCardClick ? handleCardClick : undefined}
       role={onCardClick ? "button" : undefined}
       tabIndex={onCardClick ? 0 : undefined}
@@ -144,7 +140,7 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
     >
       <div className="campaign-card__image-wrapper">
         <img src={imageUrl} alt={title} className="campaign-card__image" loading="lazy" />
-        {typeBadge ? (
+        {typeBadge && variant !== "home" ? (
           <div className="campaign-card__type-badge">
             <span>{typeBadge}</span>
           </div>
@@ -156,25 +152,43 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
         </Text>
         {dateRange ? (
           <div className="campaign-card__date-row">
+            <span className="campaign-card__date-icon" aria-hidden>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
+                <path d="M12 7v5l3 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
             <span className="campaign-card__date-text">{dateRange}</span>
           </div>
         ) : null}
         {commissionDisplay ? (
-          <div className="campaign-card__hoa-hong-row">
-            <span className="campaign-card__hoa-hong-label">Hoa hồng</span>
-            <span className="campaign-card__hoa-hong-value">{commissionDisplay}</span>
-          </div>
-        ): null}
+          variant === "home" ? (
+            <div className="campaign-card__commission-home">
+              <span className="campaign-card__commission-home-label">Hoa hồng tối đa</span>
+              <span className="campaign-card__commission-home-value">{commissionDisplay}</span>
+            </div>
+          ) : (
+            <div className="campaign-card__hoa-hong-row">
+              <span className="campaign-card__hoa-hong-label">Hoa hồng</span>
+              <span className="campaign-card__hoa-hong-value">{commissionDisplay}</span>
+            </div>
+          )
+        ) : null}
         {/* Web: rejected — không render CTA trên card list; chi tiết xem `job-detail`. */}
-        {isGuest ? (
+        {useHomeShareCta ? (
+          <button type="button" className="campaign-card__btn-cta campaign-card__btn-cta--home" onClick={handleCta}>
+            <img src={iconShare} alt="" width={18} height={18} />
+            <span>{`Chia sẻ nhận ${commissionDisplay}`}</span>
+          </button>
+        ) : isGuest ? (
           <button type="button" className="campaign-card__btn-cta campaign-card__btn-cta--outline" onClick={handleCta}>
             <PlusIcon />
             <span>Tham gia</span>
           </button>
-        ) : contractsLoading ? (
+        ) : ctaBusy ? (
           <button type="button" className="campaign-card__btn-cta campaign-card__btn-cta--loading" disabled>
             <span className="campaign-card__btn-cta-spinner" />
-            <span>Đang tải...</span>
+            <span>{joinSubmitting ? "Đang xử lý..." : "Đang tải..."}</span>
           </button>
         ) : ctaMode === "pending" ? (
           <button type="button" className="campaign-card__btn-cta campaign-card__btn-cta--pending" disabled>
@@ -194,6 +208,36 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
         )}
       </div>
     </div>
+    <Modal
+      visible={adSpaceModal.open}
+      title="Thông báo"
+      onClose={() => setAdSpaceModal({ open: false, message: "" })}
+    >
+      <div style={{ padding: "8px 0 16px" }}>
+        <Text size="normal" style={{ marginBottom: 20, lineHeight: 1.5 }}>
+          {adSpaceModal.message}
+        </Text>
+        <div style={{ display: "flex", gap: 12 }}>
+          <Button
+            variant="secondary"
+            fullWidth
+            onClick={() => setAdSpaceModal({ open: false, message: "" })}
+          >
+            Đóng
+          </Button>
+          <Button
+            fullWidth
+            onClick={() => {
+              setAdSpaceModal({ open: false, message: "" });
+              navigate("/profile");
+            }}
+          >
+            Đến Hồ sơ
+          </Button>
+        </div>
+      </div>
+    </Modal>
+    </>
   );
 };
 

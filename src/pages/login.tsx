@@ -5,6 +5,10 @@ import { useNavigate, useLocation } from "zmp-ui";
 import { useAuth } from "@/hooks/useAuth";
 import { loginWithZalo } from "@/services/auth";
 import { getZaloAuthBundle } from "@/services/zaloSdk";
+import {
+  hasCompletedZaloMiniPermissions,
+  markZaloMiniPermissionsCompleted,
+} from "@/utils/zaloConsentStorage";
 
 import PermissionConsentModal from "@/components/auth/PermissionConsentModal";
 import LoginView from "@/components/auth/LoginView";
@@ -63,7 +67,9 @@ const LoginPage: React.FC = () => {
     setError(null);
 
     try {
-      const bundle = await getZaloAuthBundle();
+      const bundle = await getZaloAuthBundle({
+        skipAuthorize: hasCompletedZaloMiniPermissions(),
+      });
 
       console.log("[Auth] Zalo bundle collected", bundle);
 
@@ -97,6 +103,7 @@ const LoginPage: React.FC = () => {
       console.log("[Auth] Zalo login success:", mergedUser);
       // Dùng ssoToken.access_token làm auth token cho API calls
       setAuth(res.token, mergedUser, false, res.refreshToken);
+      markZaloMiniPermissionsCompleted();
 
       if (res.isNewUser) {
         navigate("/register", { replace: true });
@@ -115,7 +122,7 @@ const LoginPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [setAuth, navigate]);
+  }, [setAuth, navigate, redirectPath]);
 
   /**
    * User nhấn "Cho phép" trên modal giải thích Zalo permissions
@@ -136,17 +143,22 @@ const LoginPage: React.FC = () => {
    * Nhấn "Đăng nhập với Zalo" trên LoginView
    */
   const handleZaloLoginFromManual = useCallback(() => {
-    setStep("consent");
     setError(null);
-  }, []);
+    if (hasCompletedZaloMiniPermissions()) {
+      setStep("loading");
+      void performZaloAuth();
+      return;
+    }
+    setStep("consent");
+  }, [performZaloAuth]);
 
   return (
     <Page className="login-page-be" hideScrollbar>
-      <div 
-        style={{ position: 'absolute', top: 16, left: 16, zIndex: 50, cursor: 'pointer', padding: 8 }} 
+      <div
+        className="login-page-be__back"
         onClick={() => navigate("/", { replace: true })}
       >
-        <Icon icon="zi-arrow-left" style={{ fontSize: 24, color: '#1A1A2E' }} />
+        <Icon icon="zi-arrow-left" style={{ fontSize: 24, color: "#FFFFFF" }} />
       </div>
 
       {/* Loading overlay */}

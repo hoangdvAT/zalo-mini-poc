@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Page, Box, Text, Input, Button, useSnackbar, Icon } from "zmp-ui";
+import { Page, Box, Text, Input, Button, useSnackbar, Icon, Select } from "zmp-ui";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { getApiErrorMessage } from "@/utils/authErrors";
@@ -181,182 +181,200 @@ const ProfileUpdatePage: React.FC = () => {
     }
 
     return (
-        <Page className="detail-page" hideScrollbar>
-            <div className="jd-header">
-                <div className="jd-header__back" onClick={() => navigate(-1)}>
-                    <Icon icon="zi-arrow-left" size={24} />
+        <Page className="profile-setup-page" hideScrollbar>
+            <div className="profile-setup-header">
+                <div className="profile-setup-header__back" onClick={() => navigate(-1)}>
+                    <Icon icon="zi-arrow-left" size={22} />
                 </div>
-                <div className="jd-header__info">
-                    <Text.Title size="normal" className="jd-header__name">
-                        Cập nhật tài khoản
+                <div className="profile-setup-header__info">
+                    <Text.Title size="normal" className="profile-setup-header__name">
+                        Thiết lập tài khoản
                     </Text.Title>
                 </div>
             </div>
 
-            <Box p={4} pb={10} className="jd-body">
+            <Box p={0} pb={12} className="profile-setup-body">
+                <div className="profile-setup-section">
+                    <div className="profile-setup-section__title">Thông tin chung</div>
 
-                <Box mb={4}>
-                    <Text size="small" bold style={{ marginBottom: 8 }}>Họ <span style={{ color: 'red' }}>*</span></Text>
-                    <Input
-                        placeholder="Nhập họ..."
-                        value={form.last_name}
-                        onChange={(e) => patchForm({ last_name: e.target.value })}
-                        clearable
-                    />
-                </Box>
-                <Box mb={4}>
-                    <Text size="small" bold style={{ marginBottom: 8 }}>Tên <span style={{ color: 'red' }}>*</span></Text>
-                    <Input
-                        placeholder="Nhập tên..."
-                        value={form.first_name}
-                        onChange={(e) => patchForm({ first_name: e.target.value })}
-                        clearable
-                    />
-                </Box>
-                <Box mb={4}>
-                    <Text size="small" bold style={{ marginBottom: 8 }}>Ngày sinh</Text>
-                    <Input
-                        placeholder="YYYY-MM-DD"
-                        value={form.date_of_birth}
-                        onChange={(e) => patchForm({ date_of_birth: e.target.value })}
-                        clearable
-                    />
-                </Box>
-                <Box mb={4}>
-                    <Text size="small" bold style={{ marginBottom: 8 }}>Số điện thoại <span style={{ color: 'red' }}>*</span></Text>
-                    <Input
-                        placeholder="Nhập số điện thoại..."
-                        value={form.phone_number}
-                        onChange={(e) => patchForm({ phone_number: e.target.value })}
-                        clearable
-                    />
-                </Box>
-                <Box mb={4}>
-                    <Text size="small" bold style={{ marginBottom: 8 }}>
-                        Email
-                    </Text>
-                    <Input
-                        placeholder="Email"
-                        value={form.email}
-                        readOnly
-                        disabled
-                        style={{ opacity: 0.85 }}
-                    />
-                    <Text size="xSmall" style={{ marginTop: 6, color: "#667085" }}>
-                        Email gắn với tài khoản, không thể chỉnh sửa tại đây.
-                    </Text>
-                </Box>
-                <Box mb={4}>
-                    <Text size="small" bold style={{ marginBottom: 8 }}>Địa chỉ</Text>
-                    <Input
-                        placeholder="Nhập địa chỉ..."
-                        value={form.address}
-                        onChange={(e) => patchForm({ address: e.target.value })}
-                        clearable
-                    />
-                </Box>
-                <Box mb={4}>
-                    <Text size="small" bold style={{ marginBottom: 8 }}>Tỉnh/Thành phố</Text>
-                    <Input
-                        placeholder="Nhập tỉnh/thành phố..."
-                        value={form.city}
-                        onChange={(e) => patchForm({ city: e.target.value })}
-                        clearable
-                    />
-                </Box>
-                <Box mb={4}>
-                    <Text size="small" bold style={{ marginBottom: 8 }}>Tên công ty</Text>
-                    <Input
-                        placeholder="Nhập tên công ty..."
-                        value={form.company_name}
-                        onChange={(e) => patchForm({ company_name: e.target.value })}
-                        clearable
-                    />
-                </Box>
-                <Box mb={4}>
-                    <Text size="small" bold style={{ marginBottom: 8 }}>Số CCCD</Text>
-                    <Input
-                        placeholder="Nhập số CCCD..."
-                        value={form.card_number}
-                        onChange={(e) => patchForm({ card_number: e.target.value })}
-                        clearable
-                    />
-                </Box>
-                
-                <Box mb={4}>
-                    <Text size="small" bold style={{ marginBottom: 8 }}>Ảnh CCCD mặt trước</Text>
-                    <div 
-                        onClick={() => handleImageUpload('image_before_card')}
-                        style={{ 
-                            border: '1px dashed #ccc', 
-                            borderRadius: 8, 
-                            padding: 16, 
-                            textAlign: 'center', 
-                            cursor: 'pointer',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            minHeight: 120,
-                            overflow: 'hidden'
-                        }}
-                    >
-                        {form.image_before_card ? (
-                            <img src={form.image_before_card} alt="Mặt trước" style={{ width: '100%', height: 'auto', maxHeight: 200, objectFit: 'contain' }} />
-                        ) : (
-                            <>
-                                <Icon icon="zi-camera" style={{ fontSize: 32, color: '#888', marginBottom: 8 }} />
-                                <Text size="small" style={{ color: '#888' }}>Nhấn để chụp/chọn ảnh</Text>
-                            </>
-                        )}
+                    <div className="profile-setup-grid-2">
+                        <div className="profile-setup-field">
+                            <Text size="small" className="profile-setup-field__label">Tên*</Text>
+                            <Input
+                                placeholder="Nhập tên"
+                                value={form.first_name}
+                                onChange={(e) => patchForm({ first_name: e.target.value })}
+                            />
+                        </div>
+                        <div className="profile-setup-field">
+                            <Text size="small" className="profile-setup-field__label">Họ*</Text>
+                            <Input
+                                placeholder="Nhập họ"
+                                value={form.last_name}
+                                onChange={(e) => patchForm({ last_name: e.target.value })}
+                            />
+                        </div>
                     </div>
-                </Box>
 
-                <Box mb={6}>
-                    <Text size="small" bold style={{ marginBottom: 8 }}>Ảnh CCCD mặt sau</Text>
-                    <div 
-                        onClick={() => handleImageUpload('image_after_card')}
-                        style={{ 
-                            border: '1px dashed #ccc', 
-                            borderRadius: 8, 
-                            padding: 16, 
-                            textAlign: 'center', 
-                            cursor: 'pointer',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            minHeight: 120,
-                            overflow: 'hidden'
-                        }}
-                    >
-                        {form.image_after_card ? (
-                            <img src={form.image_after_card} alt="Mặt sau" style={{ width: '100%', height: 'auto', maxHeight: 200, objectFit: 'contain' }} />
-                        ) : (
-                            <>
-                                <Icon icon="zi-camera" style={{ fontSize: 32, color: '#888', marginBottom: 8 }} />
-                                <Text size="small" style={{ color: '#888' }}>Nhấn để chụp/chọn ảnh</Text>
-                            </>
-                        )}
+                    <div className="profile-setup-field">
+                        <Text size="small" className="profile-setup-field__label">Ngày sinh</Text>
+                        <Input
+                            placeholder="Nhập ngày sinh"
+                            value={form.date_of_birth}
+                            onChange={(e) => patchForm({ date_of_birth: e.target.value })}
+                        />
                     </div>
-                </Box>
+
+                    <div className="profile-setup-field">
+                        <Text size="small" className="profile-setup-field__label">Địa chỉ liên hệ</Text>
+                        <Input
+                            placeholder="Nhập địa chỉ liên hệ"
+                            value={form.address}
+                            onChange={(e) => patchForm({ address: e.target.value })}
+                        />
+                    </div>
+
+                    <div className="profile-setup-field">
+                        <Text size="small" className="profile-setup-field__label">Email</Text>
+                        <Input
+                            placeholder="abc@gmail.com"
+                            value={form.email}
+                            readOnly
+                            disabled
+                        />
+                    </div>
+
+                    <div className="profile-setup-field">
+                        <Text size="small" className="profile-setup-field__label">Điện thoại</Text>
+                        <Input
+                            placeholder="Nhập số điện thoại của bạn"
+                            value={form.phone_number}
+                            onChange={(e) => patchForm({ phone_number: e.target.value })}
+                            disabled
+                        />
+                    </div>
+
+                    <div className="profile-setup-field">
+                        <Text size="small" className="profile-setup-field__label">Danh mục chính</Text>
+                        <Select
+                            placeholder="Chọn danh mục"
+                            value={String(form.primary_category || "")}
+                            onChange={(value) => patchForm({ primary_category: Number(value || 0) })}
+                        >
+                            <Select.Option value="4" title="Dịch vụ tài chính">Dịch vụ tài chính</Select.Option>
+                            <Select.Option value="1" title="Thương mại điện tử">Thương mại điện tử</Select.Option>
+                            <Select.Option value="2" title="Du lịch">Du lịch</Select.Option>
+                        </Select>
+                    </div>
+
+                    <div className="profile-setup-field">
+                        <Text size="small" className="profile-setup-field__label">Giới tính</Text>
+                        <div className="profile-setup-gender">
+                            <label className="profile-setup-radio">
+                                <input
+                                    type="radio"
+                                    name="gender"
+                                    checked={form.gender === 0}
+                                    onChange={() => patchForm({ gender: 0 })}
+                                />
+                                <span>Nam</span>
+                            </label>
+                            <label className="profile-setup-radio">
+                                <input
+                                    type="radio"
+                                    name="gender"
+                                    checked={form.gender === 1}
+                                    onChange={() => patchForm({ gender: 1 })}
+                                />
+                                <span>Nữ</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="profile-setup-section">
+                    <div className="profile-setup-section__title">Thông tin khác</div>
+
+                    <div className="profile-setup-field">
+                        <Text size="small" className="profile-setup-field__label">Quốc gia*</Text>
+                        <Select
+                            placeholder="Chọn quốc gia"
+                            value={form.country}
+                            onChange={(value) => patchForm({ country: String(value || "") })}
+                        >
+                            <Select.Option value="Việt Nam" title="Việt Nam">Việt Nam</Select.Option>
+                            <Select.Option value="Singapore" title="Singapore">Singapore</Select.Option>
+                        </Select>
+                    </div>
+
+                    <div className="profile-setup-field">
+                        <Text size="small" className="profile-setup-field__label">Thành phố*</Text>
+                        <Select
+                            placeholder="Chọn thành phố"
+                            value={form.city}
+                            onChange={(value) => patchForm({ city: String(value || "") })}
+                        >
+                            <Select.Option value="Hà Nội" title="Hà Nội">Hà Nội</Select.Option>
+                            <Select.Option value="TP.HCM" title="TP.HCM">TP.HCM</Select.Option>
+                            <Select.Option value="Đà Nẵng" title="Đà Nẵng">Đà Nẵng</Select.Option>
+                        </Select>
+                    </div>
+                </div>
+
+                <div className="profile-setup-section">
+                    <div className="profile-setup-section__title">Thông tin CCCD</div>
+
+                    <div className="profile-setup-field">
+                        <Text size="small" className="profile-setup-field__label">Số CCCD</Text>
+                        <Input
+                            placeholder="Nhập số căn cước công dân"
+                            value={form.card_number}
+                            onChange={(e) => patchForm({ card_number: e.target.value })}
+                        />
+                    </div>
+
+                    <div className="profile-setup-upload-list">
+                        <div className="profile-setup-upload-card" onClick={() => handleImageUpload('image_before_card')}>
+                            {form.image_before_card ? (
+                                <img src={form.image_before_card} alt="CCCD mặt trước" className="profile-setup-upload-card__image" />
+                            ) : (
+                                <>
+                                    <div className="profile-setup-upload-card__icon">
+                                        <Icon icon="zi-inbox" />
+                                    </div>
+                                    <div className="profile-setup-upload-card__title"><span>Tải lên</span> CCCD mặt trước</div>
+                                    <div className="profile-setup-upload-card__note">SVG, PNG, JPG or GIF (max. 800x400px)</div>
+                                </>
+                            )}
+                        </div>
+
+                        <div className="profile-setup-upload-card" onClick={() => handleImageUpload('image_after_card')}>
+                            {form.image_after_card ? (
+                                <img src={form.image_after_card} alt="CCCD mặt sau" className="profile-setup-upload-card__image" />
+                            ) : (
+                                <>
+                                    <div className="profile-setup-upload-card__icon">
+                                        <Icon icon="zi-inbox" />
+                                    </div>
+                                    <div className="profile-setup-upload-card__title"><span>Tải lên</span> CCCD mặt sau</div>
+                                    <div className="profile-setup-upload-card__note">SVG, PNG, JPG or GIF (max. 800x400px)</div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </div>
 
                 {inlineError ? (
-                    <Box mb={3} role="alert">
-                        <Text size="small" style={{ color: "#d92d20", lineHeight: 1.45 }}>
-                            {inlineError}
-                        </Text>
-                    </Box>
+                    <Text size="small" className="profile-setup-error" role="alert">
+                        {inlineError}
+                    </Text>
                 ) : null}
 
-                <Button 
-                    fullWidth 
-                    onClick={handleSubmit} 
-                    loading={saving}
-                    size="large"
-                >
-                    Cập nhật
-                </Button>
+                <div className="profile-setup-submit">
+                    <Button fullWidth onClick={handleSubmit} loading={saving} className="profile-setup-submit__btn">
+                        Lưu, thay đổi
+                    </Button>
+                </div>
             </Box>
         </Page>
     );

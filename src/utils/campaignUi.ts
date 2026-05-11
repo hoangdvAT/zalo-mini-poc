@@ -34,6 +34,9 @@ function resolveCtaFromPortalAggregates(c: Campaign): CampaignListCtaMode | null
     const active = Number(activeRaw);
     const pending = Number(pendingRaw);
     const deeplink = Number(c.has_deeplink);
+    /** Một số bản API list trả thêm số hợp đồng từ chối — ưu tiên trước nhánh “chờ” tổng hợp. */
+    const rejectedAgg = firstNum(r.rejected, r.rejected_count, r.contract_rejected, r.reject_count);
+    if (rejectedAgg !== undefined && !Number.isNaN(rejectedAgg) && rejectedAgg > 0) return "rejected";
 
     if (!Number.isNaN(total) && total === 0) return "join";
     if (!Number.isNaN(active) && active > 0 && !Number.isNaN(deeplink) && deeplink > 0) return "create-link";
@@ -128,7 +131,21 @@ function readContractSnapshotFromListItem(c: Campaign): ListItemContractSnapshot
     const listKeys = ["contracts", "publisher_contracts"];
     for (const k of listKeys) {
         const arr = r[k];
-        if (Array.isArray(arr) && arr.length > 0 && typeof arr[0] === "object") {
+        if (!Array.isArray(arr) || arr.length === 0) continue;
+        /** Portal: `status === 3` = rejected — ưu tiên bất kỳ bản ghi từ chối, không chỉ `contracts[0]`. */
+        for (const item of arr) {
+            if (!item || typeof item !== "object" || Array.isArray(item)) continue;
+            const row = contractRowFromUnknown(item as Record<string, unknown>);
+            if (isContractRejected(row)) {
+                return {
+                    status: row.status,
+                    advertiser_status: row.advertiser_status,
+                    publisher_status: row.publisher_status,
+                    sync_contract_status: row.sync_contract_status || "",
+                };
+            }
+        }
+        if (typeof arr[0] === "object") {
             const o = arr[0] as Record<string, unknown>;
             status = status ?? firstNum(o.status, o.contract_status, o.contractStatus);
             adv = adv ?? firstNum(o.advertiser_status, o.advertiserStatus);
@@ -200,6 +217,21 @@ export function campaignPayloadHasCtaHint(c: Campaign): boolean {
     return false;
 }
 
+/**
+ * Tab web `/me/campaigns` — `campaign-card.component.html`: nút Join khi `campaign.total === 0`.
+ * Khi API `with-contract` lẫn chiến dịch chưa có HĐ, loại các item có `total === 0` (số rõ ràng).
+ */
+export function filterJoinTabCampaignsHasContract(campaigns: Campaign[]): Campaign[] {
+    return campaigns.filter((c) => {
+        const r = c as unknown as Record<string, unknown>;
+        const raw = r.total;
+        if (raw === undefined || raw === null || raw === "") return true;
+        const total = Number(raw);
+        if (Number.isNaN(total)) return true;
+        return total > 0;
+    });
+}
+
 /** Badge kiểu CPL / CPO trên ảnh */
 export function getCampaignTypeBadge(c: Campaign): string {
     const ct = c.commission_type?.trim();
@@ -234,15 +266,15 @@ export function isContractApprovedForLink(c: Contract): boolean {
 }
 
 /**
- * Hợp đồng bị từ chối phía advertiser / huỷ — không hiển thị "Chờ phản hồi" hay cho tạo link.
- * Backend phổ biến: `advertiser_status === 3` = từ chối (khi `status` vẫn có thể là 2 tùy phiên bản API).
- * Một số bản API list chỉ trả `contract.status` (vd 4 / 6 = từ chối / huỷ) mà không có advertiser_status.
+ * Hợp đồng bị từ chối / không còn hiệu lực tạo link — khớp portal:
+ * - `campaign-modal.component.ts`: `item.status === 3` → rejected (đếm contractStatus.rejected).
+ * - Thêm: `advertiser_status === 3`, sync text, và một số mã status cũ (4 / 6).
  */
 export function isContractRejected(c: Contract): boolean {
     const adv = Number(c.advertiser_status);
     if (adv === 3) return true;
     const st = Number(c.status);
-    if (!Number.isNaN(st) && (st === 4 || st === 6)) return true;
+    if (!Number.isNaN(st) && (st === 3 || st === 4 || st === 6)) return true;
     const sync = String(c.sync_contract_status || "").toLowerCase();
     if (sync.includes("reject") || sync.includes("tu cho") || sync.includes("từ chối")) return true;
     return false;

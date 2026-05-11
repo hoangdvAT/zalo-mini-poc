@@ -19,6 +19,7 @@
     "/get-link/:id",
     "/report",
     "/profile",
-    "/ekyc"
+    "/ekyc",
+    "/e-contract"
   ]
 }

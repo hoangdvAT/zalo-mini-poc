@@ -64,8 +64,10 @@ export async function requestPermissions(
  * Fetch user profile via `getUserInfo()`.
  * Requires `scope.userInfo` to have been granted.
  */
-export async function fetchZaloProfile(): Promise<ZaloUserProfile> {
-  const { userInfo } = await getUserInfo({ autoRequestPermission: true });
+export async function fetchZaloProfile(
+  autoRequestPermission = true
+): Promise<ZaloUserProfile> {
+  const { userInfo } = await getUserInfo({ autoRequestPermission });
   return {
     zaloId: userInfo.id,
     name: userInfo.name,
@@ -100,18 +102,27 @@ export async function fetchZaloPhone(): Promise<ZaloPhoneResult | null> {
  *  2. getAccessToken()   → Lấy access token (BẮT BUỘC)
  *  3. getUserInfo()      → Lấy name, avatar, zaloId
  *  4. getPhoneNumber()   → Lấy phone token (backend resolve)
+ *
+ * `skipAuthorize`: khi user đã từng đăng nhập thành công trên thiết bị — bỏ `authorize()` để không bị hỏi lại mỗi lần (BUG_31 / đồng bộ hành vi web sau lần đầu).
  */
-export async function getZaloAuthBundle(): Promise<ZaloAuthBundle> {
-  // 1. Xin quyền — hiện dialog "Cho phép ... nhận thông tin của bạn"
-  try {
-    console.log("[ZaloSDK] Requesting permissions...");
-    const authResult = await authorize({
-      scopes: ["scope.userInfo", "scope.userPhonenumber"],
-    });
-    console.log("[ZaloSDK] Permission result:", authResult);
-  } catch (err) {
-    console.warn("[ZaloSDK] authorize() failed (user may have denied):", err);
-    // Vẫn tiếp tục — getUserInfo sẽ fail nếu chưa cấp quyền
+export async function getZaloAuthBundle(options?: {
+  skipAuthorize?: boolean;
+}): Promise<ZaloAuthBundle> {
+  const skipAuthorize = Boolean(options?.skipAuthorize);
+
+  // 1. Xin quyền (chỉ lần đầu / chưa lưu cờ thiết bị)
+  if (!skipAuthorize) {
+    try {
+      console.log("[ZaloSDK] Requesting permissions...");
+      const authResult = await authorize({
+        scopes: ["scope.userInfo", "scope.userPhonenumber"],
+      });
+      console.log("[ZaloSDK] Permission result:", authResult);
+    } catch (err) {
+      console.warn("[ZaloSDK] authorize() failed (user may have denied):", err);
+    }
+  } else {
+    console.log("[ZaloSDK] skipAuthorize=true — bỏ qua authorize() (đã cấp quyền trước đó)");
   }
 
   // 2. Lấy access token — BẮT BUỘC
@@ -128,10 +139,16 @@ export async function getZaloAuthBundle(): Promise<ZaloAuthBundle> {
   let phone: ZaloPhoneResult | null = null;
 
   try {
-    profile = await fetchZaloProfile();
+    profile = await fetchZaloProfile(false);
     console.log("[ZaloSDK] Profile:", profile?.name, profile?.zaloId);
   } catch (err) {
-    console.warn("[ZaloSDK] getUserInfo failed:", err);
+    console.warn("[ZaloSDK] getUserInfo (no auto) failed, retry with autoRequest:", err);
+    try {
+      profile = await fetchZaloProfile(true);
+      console.log("[ZaloSDK] Profile (retry):", profile?.name, profile?.zaloId);
+    } catch (err2) {
+      console.warn("[ZaloSDK] getUserInfo failed:", err2);
+    }
   }
 
   // 4. Lấy phone token — cần scope.userPhonenumber đã được cấp

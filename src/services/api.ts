@@ -13,6 +13,20 @@ import type {
     PublisherProfile,
 } from "@/types/auth";
 import { apiResponseToAuthUser } from "@/types/auth";
+import {
+    normalizeJoinContractResponse,
+    type JoinContractPayload,
+} from "@/utils/joinCampaignFlow";
+import type {
+    ApiMutationResult,
+    BankCoreOption,
+    CreateEkycContractRequest,
+    CreateEkycContractResult,
+    EkycSidebarStatus,
+    EkycContractListMeta,
+    EkycContractRecord,
+    SaveEkycContractStepRequest,
+} from "@/types/eContract";
 
 // Base URL — ưu tiên .env (VITE_API_BASE_URL), fallback staging cũ
 const BASE_URL = "https://pub-be-stag.mp.directsale.vn";
@@ -307,17 +321,35 @@ export async function fetchCampaignsWithContract(params: {
     try {
         const queryParams = new URLSearchParams();
         queryParams.append("page", String(params.page));
-        queryParams.append("filters[is_customize]", "1");
-        if (params.name) queryParams.append("filters[name]", params.name);
-        if (params.sort) queryParams.append("sort", params.sort);
-        if (params.category_ids?.length) {
-            queryParams.append("filters[category_ids]", params.category_ids.join(","));
-        }
-        if (params.myCampaignScope) {
+        const my = Boolean(params.myCampaignScope);
+
+        /**
+         * Portal `campaign.service.ts` → `getCampaignsWithContract`:
+         * - `v2/campaign/index` `getPublisherCampaigns` **không** set `filters.is_customize` → gửi `is_customize` rỗng.
+         * - Luôn gửi đủ key `filters[name|in_status|type_ids|category_ids|area_ids|invited|contract_status|publisher_status]` như HttpParams bên web.
+         * Màn báo cáo (không myCampaign) vẫn dùng `is_customize=1` như dashboard portal.
+         */
+        if (my) {
+            queryParams.append("is_customize", "");
+            queryParams.append("filters[name]", (params.name ?? "").trim());
+            queryParams.append("filters[in_status]", MY_CAMPAIGN_LIST_FILTERS.in_status);
+            queryParams.append("filters[type_ids]", "");
+            queryParams.append(
+                "filters[category_ids]",
+                params.category_ids?.length ? params.category_ids.join(",") : ""
+            );
+            queryParams.append("filters[area_ids]", "");
             queryParams.append("filters[invited]", MY_CAMPAIGN_LIST_FILTERS.invited);
             queryParams.append("filters[contract_status]", MY_CAMPAIGN_LIST_FILTERS.contract_status);
             queryParams.append("filters[publisher_status]", MY_CAMPAIGN_LIST_FILTERS.publisher_status);
-            queryParams.append("filters[in_status]", MY_CAMPAIGN_LIST_FILTERS.in_status);
+            queryParams.append("sort", params.sort ?? "");
+        } else {
+            queryParams.append("is_customize", "1");
+            if (params.name?.trim()) queryParams.append("filters[name]", params.name.trim());
+            if (params.sort) queryParams.append("sort", params.sort);
+            if (params.category_ids?.length) {
+                queryParams.append("filters[category_ids]", params.category_ids.join(","));
+            }
         }
         const response = await api.get(`/api/v1/campaigns/with-contract?${queryParams.toString()}`);
         return response.data?.data || { campaigns: [], meta: {} };
@@ -329,16 +361,21 @@ export async function fetchCampaignsWithContract(params: {
 
 /**
  * Tham gia campaign
- * POST /api/v1/contracts
- * @returns 
+ * POST /api/v1/contracts — body chuẩn hoá giống portal (`status` / `data.check` ở root hoặc trong `data`).
  */
-export async function fetchJoinCampaign(data: any): Promise<any> {
+export async function fetchJoinCampaign(data: {
+    campaign_id: string | number;
+}): Promise<JoinContractPayload> {
     try {
         const response = await api.post(`/api/v1/contracts`, data);
-        return response;
-    } catch (error) {
+        return normalizeJoinContractResponse(response.data);
+    } catch (error: unknown) {
+        const ax = error as { response?: { data?: unknown } };
+        if (ax.response?.data) {
+            return normalizeJoinContractResponse(ax.response.data);
+        }
         console.error("[API] fetchJoinCampaign:", error);
-        return {};
+        return { status: "error", message: "Không kết nối được máy chủ." };
     }
 }
 
@@ -391,12 +428,17 @@ export async function createTrackingLink(
     options?: {
         ad_space_code?: string;
         redirect_url?: string;
+        /** Ghi đè UTM; mặc định luôn gửi `zalo_miniapp` cho mọi luồng tạo link trong mini app. */
+        utm_source?: string;
     }
 ): Promise<DeepLinkResponse> {
     if (!getAuthToken()) {
         throw new Error("Vui lòng đăng nhập để thực hiện");
     }
-    const body: Record<string, unknown> = { campaign_id: campaignId };
+    const body: Record<string, unknown> = {
+        campaign_id: campaignId,
+        utm_source: (options?.utm_source?.trim() || "zalo_miniapp").trim(),
+    };
     if (options?.ad_space_code) body.ad_space_code = options.ad_space_code;
     if (options?.redirect_url?.trim()) body.redirect_url = options.redirect_url.trim();
     const response = await api.post("/api/v1/ad-space/create-deep-link", body);
@@ -510,6 +552,17 @@ export async function fetchConversions(params: {
     } catch (error) {
         console.error("[API] Error fetching conversions:", error);
         return { items: [], meta: {} };
+    }
+}
+
+export async function fetchConversionDetail(conversionId: string): Promise<any> {
+    try {
+        if (!getAuthToken()) return null;
+        const response = await api.get(`/api/v1/conversion/${conversionId}`);
+        return response.data?.data || response.data || null;
+    } catch (error) {
+        console.error(`[API] Error fetching conversion detail ${conversionId}:`, error);
+        return null;
     }
 }
 
@@ -661,18 +714,252 @@ export async function fetchPublisherProfile(): Promise<PublisherProfile | null> 
 }
 
 // ============ eKYC / E-CONTRACT API ============
-export async function saveEkycContract(data: {
-    full_name: string;
-    id_number: string;
-    id_issue_date: string;
-    bank_name: string;
-    account_number: string;
-}): Promise<{ status: string; message: string }> {
+
+export async function fetchEkycContracts(page = 1): Promise<{
+    items: EkycContractRecord[];
+    meta: EkycContractListMeta;
+}> {
     if (!getAuthToken()) {
-        throw new Error("Vui lòng đăng nhập để thực hiện");
+        return {
+            items: [],
+            meta: { total: 0, per_page: 20, current_page: 1, last_page: 1 },
+        };
     }
-    const response = await api.post("/api/v1/ekyc/create/contract", data);
-    return response.data;
+    try {
+        const response = await api.get("/api/v1/ekyc/contract", {
+            params: { page },
+        });
+        const data = response.data?.data;
+        const items = Array.isArray(data?.ekycs) ? data.ekycs : [];
+        const m = data?.meta;
+        const meta: EkycContractListMeta = {
+            total: typeof m?.total === "number" ? m.total : items.length,
+            per_page: typeof m?.per_page === "number" ? m.per_page : 20,
+            current_page: typeof m?.current_page === "number" ? m.current_page : page,
+            last_page: typeof m?.last_page === "number" ? m.last_page : 1,
+        };
+        return { items, meta };
+    } catch (error) {
+        console.error("[API] fetchEkycContracts:", error);
+        return {
+            items: [],
+            meta: { total: 0, per_page: 20, current_page: 1, last_page: 1 },
+        };
+    }
+}
+
+function normalizeCreateEkycContractResult(raw: unknown): CreateEkycContractResult {
+    const r = raw as Record<string, unknown>;
+    const status = String(r?.status ?? "");
+    if (status === "success") {
+        return { ok: true, data: r?.data };
+    }
+    if (status === "fail_validate") {
+        const message = typeof r?.message === "string" ? r.message : "Dữ liệu chưa hợp lệ.";
+        const valRaw = r?.data;
+        const validation =
+            valRaw !== null && typeof valRaw === "object" && !Array.isArray(valRaw)
+                ? (valRaw as Record<string, string[]>)
+                : undefined;
+        const first =
+            validation &&
+            Object.values(validation).find((a) => Array.isArray(a) && a[0])?.[0];
+        return {
+            ok: false,
+            message: first || message,
+            code: typeof r?.code === "string" ? r.code : undefined,
+            validation,
+        };
+    }
+    const message = typeof r?.message === "string" ? r.message : "Không tạo được hợp đồng.";
+    const code = typeof r?.code === "string" ? r.code : undefined;
+    const valRaw = r?.data;
+    const validation =
+        valRaw !== null && typeof valRaw === "object" && !Array.isArray(valRaw)
+            ? (valRaw as Record<string, string[]>)
+            : undefined;
+    return { ok: false, message, code, validation };
+}
+
+function normalizeApiMutationResult(raw: unknown): ApiMutationResult {
+    const r = asRecord(raw) || {};
+    const status = String(r.status ?? "");
+    const message =
+        typeof r.message === "string"
+            ? r.message
+            : status === "success"
+              ? "Thao tác thành công."
+              : "Thao tác thất bại.";
+    const code = typeof r.code === "string" ? r.code : undefined;
+    const data = r.data;
+    const validation =
+        data !== null && typeof data === "object" && !Array.isArray(data)
+            ? (data as Record<string, string[]>)
+            : undefined;
+    const first =
+        validation &&
+        Object.values(validation).find((a) => Array.isArray(a) && a[0])?.[0];
+
+    if (status === "success") {
+        return { ok: true, message, code, data };
+    }
+
+    return {
+        ok: false,
+        message: first || message,
+        code,
+        data,
+        validation,
+    };
+}
+
+/**
+ * Tạo / cập nhật thông tin hợp đồng điện tử (pub-be)
+ * POST /api/v1/ekyc/create/contract
+ * — `contract_info` dùng ngày dd/mm/yyyy; `resource_id` thường là `users/me` → `user.id` (internal).
+ */
+export async function createEkycContract(
+    body: CreateEkycContractRequest
+): Promise<CreateEkycContractResult> {
+    if (!getAuthToken()) {
+        return { ok: false, message: "Vui lòng đăng nhập để thực hiện." };
+    }
+    try {
+        const response = await api.post("/api/v1/ekyc/create/contract", body);
+        return normalizeCreateEkycContractResult(response.data);
+    } catch (error: unknown) {
+        const ax = error as { response?: { data?: unknown } };
+        if (ax.response?.data) {
+            return normalizeCreateEkycContractResult(ax.response.data);
+        }
+        console.error("[API] createEkycContract:", error);
+        return { ok: false, message: "Không kết nối được máy chủ." };
+    }
+}
+
+export async function saveEkycContractStep(
+    body: SaveEkycContractStepRequest
+): Promise<ApiMutationResult> {
+    if (!getAuthToken()) {
+        return { ok: false, message: "Vui lòng đăng nhập để thực hiện." };
+    }
+    try {
+        const response = await api.post("/api/v1/ekyc/create/contract-by-step", body);
+        return normalizeApiMutationResult(response.data);
+    } catch (error: unknown) {
+        const ax = error as { response?: { data?: unknown } };
+        if (ax.response?.data) {
+            return normalizeApiMutationResult(ax.response.data);
+        }
+        console.error("[API] saveEkycContractStep:", error);
+        return { ok: false, message: "Không kết nối được máy chủ." };
+    }
+}
+
+export async function fetchBankCoreList(): Promise<BankCoreOption[]> {
+    if (!getAuthToken()) {
+        return [];
+    }
+    try {
+        const response = await api.get("/api/v1/banks/core");
+        const data = response.data?.data;
+        const banks = Array.isArray(data?.banks) ? data.banks : [];
+        return banks
+            .map((bank) => {
+                const item = asRecord(bank);
+                if (!item) return null;
+                const bank_code = String(item.bank_code ?? "").trim();
+                const bank_name_vi = String(item.bank_name_vi ?? item.bank_name ?? "").trim();
+                if (!bank_code || !bank_name_vi) return null;
+                return {
+                    id: String(item.id ?? bank_code),
+                    bank_code,
+                    bank_name_vi,
+                    bank_name: String(item.bank_name ?? bank_name_vi),
+                    swift_code: String(item.swift_code ?? ""),
+                    display_name: `${bank_code} - ${bank_name_vi}`,
+                } satisfies BankCoreOption;
+            })
+            .filter((bank): bank is BankCoreOption => Boolean(bank));
+    } catch (error) {
+        console.error("[API] fetchBankCoreList:", error);
+        return [];
+    }
+}
+
+export async function verifyBankAccount(params: {
+    bank_account: string;
+    swift_code?: string | null;
+}): Promise<ApiMutationResult> {
+    if (!getAuthToken()) {
+        return { ok: false, message: "Vui lòng đăng nhập để thực hiện." };
+    }
+    try {
+        const response = await api.get("/api/v1/ekyc/check-bank-account", {
+            params,
+        });
+        return normalizeApiMutationResult(response.data);
+    } catch (error: unknown) {
+        const ax = error as { response?: { data?: unknown } };
+        if (ax.response?.data) {
+            return normalizeApiMutationResult(ax.response.data);
+        }
+        console.error("[API] verifyBankAccount:", error);
+        return { ok: false, message: "Không kết nối được máy chủ." };
+    }
+}
+
+export async function checkEkycSidebarStatus(): Promise<EkycSidebarStatus> {
+    if (!getAuthToken()) {
+        return { linked: false, ekyc: null };
+    }
+    try {
+        const response = await api.post("/api/v1/ekyc/check", {});
+        const data = asRecord(response.data?.data);
+        const ekyc = asRecord(data?.ekyc ?? null);
+        const linked = Boolean(ekyc?.core_user_sso_id);
+        return { linked, ekyc };
+    } catch (error) {
+        console.error("[API] checkEkycSidebarStatus:", error);
+        return { linked: false, ekyc: null };
+    }
+}
+
+export async function linkScalefAccount(): Promise<ApiMutationResult> {
+    if (!getAuthToken()) {
+        return { ok: false, message: "Vui lòng đăng nhập để thực hiện." };
+    }
+    try {
+        const response = await api.post("/api/v1/partners/scalef/check-link-account", {});
+        return normalizeApiMutationResult(response.data);
+    } catch (error: unknown) {
+        const ax = error as { response?: { data?: unknown } };
+        if (ax.response?.data) {
+            return normalizeApiMutationResult(ax.response.data);
+        }
+        console.error("[API] linkScalefAccount:", error);
+        return { ok: false, message: "Không kết nối được máy chủ." };
+    }
+}
+
+export async function confirmLinkScalefPhone(payload: {
+    new_phone?: string;
+    sync_phone: boolean;
+}): Promise<ApiMutationResult> {
+    if (!getAuthToken()) {
+        return { ok: false, message: "Vui lòng đăng nhập để thực hiện." };
+    }
+    try {
+        const response = await api.post("/api/v1/partners/scalef/confirm-phone-update", payload);
+        return normalizeApiMutationResult(response.data);
+    } catch (error: unknown) {
+        const ax = error as { response?: { data?: unknown } };
+        if (ax.response?.data) {
+            return normalizeApiMutationResult(ax.response.data);
+        }
+        console.error("[API] confirmLinkScalefPhone:", error);
+        return { ok: false, message: "Không kết nối được máy chủ." };
+    }
 }
 
 // ============ Response normalization (API gateway có thể trả snake_case / lồng object) ============

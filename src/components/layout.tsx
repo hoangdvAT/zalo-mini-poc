@@ -23,6 +23,7 @@ import PaymentPage from "@/pages/payment";
 import ProfilePage from "@/pages/profile";
 import ProfileUpdatePage from "@/pages/profile-update";
 import EkycPage from "@/pages/ekyc";
+import EContractPage from "@/pages/e-contract";
 import LoginPage from "@/pages/login";
 import RegisterPage from "@/pages/register";
 import { ShareBottomSheet } from "@/components/share";
@@ -83,6 +84,7 @@ const Layout: React.FC = () => {
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/profile-update" element={<ProfileUpdatePage />} />
               <Route path="/ekyc" element={<EkycPage />} />
+              <Route path="/e-contract" element={<EContractPage />} />
             </AnimationRoutes>
               <Navigation />
               <ShareBottomSheet />

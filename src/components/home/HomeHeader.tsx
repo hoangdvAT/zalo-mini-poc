@@ -1,6 +1,6 @@
-import React, { useCallback } from "react";
+import React from "react";
 import { Icon } from "zmp-ui";
-import atLogo from "@/static/logo-white.png";
+import sungroupLogoFigma from "@/static/sungroup-logo-figma.svg";
 
 export interface HomeHeaderProps {
   /** Tổng số dư hiển thị */
@@ -26,42 +26,51 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
 
   return (
     <div className="home-header-banner">
-      {/* 1. Logos - nền cam */}
-      <div className={`home-header-banner__${isGuest ? "guest-top" : "top"}`}>
+      <div className="home-header-banner__top">
         <div className="home-header-banner__logos">
-          <img src={atLogo} alt="ACCESSTRADE" className="home-header-banner__logo-at" />
+          <img src={sungroupLogoFigma} alt="Sun Group x AccessTrade" className="home-header-banner__logo-combined" />
         </div>
       </div>
 
-      {/* 2. Revenue Card - Doanh thu, ngay dưới logo */}
-      {!isGuest && (
-      <div className="home-header-banner__balance-card">
+      <div
+        className={[
+          "home-header-banner__balance-card",
+          balance <= 0 && approvedBalance <= 0 && pendingBalance <= 0
+            ? "home-header-banner__balance-card--empty"
+            : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
         <div className="home-header-banner__balance-top">
-          <span className="home-header-banner__balance-label">Bạn có</span>
+          <span className="home-header-banner__balance-label">Bạn có:</span>
           <Icon icon="zi-chevron-right" size={16} className="home-header-banner__balance-arrow" />
         </div>
         <div className="home-header-banner__balance-amount">
           {formatAmount(balance)}
         </div>
-        <p className="home-header-banner__balance-desc">
-          Thanh toán vào ngày 05 & 20 hàng tháng
-        </p>
-        {statsScopeHint ? (
-          <p className="home-header-banner__balance-scope">{statsScopeHint}</p>
+        {balance > 0 || approvedBalance > 0 || pendingBalance > 0 ? (
+          <>
+            <p className="home-header-banner__balance-desc">
+              Thanh toán vào ngày 05 & 20 hàng tháng
+            </p>
+            {statsScopeHint ? (
+              <p className="home-header-banner__balance-scope">{statsScopeHint}</p>
+            ) : null}
+            <div className="home-header-banner__balance-sep" />
+            <div className="home-header-banner__balance-sub">
+              <div className="home-header-banner__balance-box">
+                <span className="home-header-banner__balance-box-label">Đã duyệt</span>
+                <span className="home-header-banner__balance-box-value">{formatAmount(approvedBalance)}</span>
+              </div>
+              <div className="home-header-banner__balance-box">
+                <span className="home-header-banner__balance-box-label">Chờ duyệt</span>
+                <span className="home-header-banner__balance-box-value">{formatAmount(pendingBalance)}</span>
+              </div>
+            </div>
+          </>
         ) : null}
-        <div className="home-header-banner__balance-sep" />
-        <div className="home-header-banner__balance-sub">
-          <div className="home-header-banner__balance-box">
-            <span className="home-header-banner__balance-box-label">Đã duyệt</span>
-            <span className="home-header-banner__balance-box-value">{formatAmount(approvedBalance)}</span>
-          </div>
-          <div className="home-header-banner__balance-box">
-            <span className="home-header-banner__balance-box-label">Chờ duyệt</span>
-            <span className="home-header-banner__balance-box-value">{formatAmount(pendingBalance)}</span>
-          </div>
-        </div>
       </div>
-      )}
     </div>
   );
 };

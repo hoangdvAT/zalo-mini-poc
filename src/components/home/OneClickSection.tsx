@@ -33,7 +33,7 @@ const OneClickSection: React.FC<OneClickSectionProps> = ({
   };
 
   return (
-    <div className="jd-oneclick" style={{ margin: "0 0 20px 0" }}>
+    <div className={`jd-oneclick ${!showCta ? "jd-oneclick--nobtn" : ""}`} style={{ margin: "0 0 20px 0" }}>
       <div className="jd-oneclick__header">
         <img src={iconSparkle} alt="" width={20} height={20} />
         <span className="jd-oneclick__title">Nhận hoa hồng chỉ với 1 Click</span>

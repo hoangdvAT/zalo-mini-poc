@@ -137,7 +137,7 @@ const GetLinkPage: React.FC = () => {
     }, [primaryContract, resolvedAdSpaceCode]);
 
     const handleCreateLink = useCallback(async () => {
-        if (!id) return;
+        if (!id || loadingLink) return;
 
         setLoadingLink(true);
         try {
@@ -219,12 +219,9 @@ const GetLinkPage: React.FC = () => {
         );
     }
 
+    /** Không `disabled` theo `loadingLink` — để nút vẫn hiện spinner khi đang tạo (tránh nút “chết” im lặng). */
     const btnDisabled =
-        !inputUrl?.trim() ||
-        loadingLink ||
-        loadingContext ||
-        !canCreateLink ||
-        !!contractError;
+        !inputUrl?.trim() || loadingContext || !canCreateLink || !!contractError;
 
     return (
         <Page className="getlink-page" hideScrollbar>
@@ -261,7 +258,7 @@ const GetLinkPage: React.FC = () => {
                                     {campaign.name}
                                 </Text>
                                 <Text size="xSmall" className="getlink-job-info__commission">
-                                    🎯 Hoa hồng: {getCommissionDisplay(campaign)}
+                                    Hoa hồng: {getCommissionDisplay(campaign)}
                                 </Text>
                             </div>
                         </div>
@@ -295,12 +292,14 @@ const GetLinkPage: React.FC = () => {
                             variant="primary"
                             size="large"
                             fullWidth
-                            loading={loadingLink || loadingContext}
+                            loading={loadingContext || loadingLink}
                             disabled={btnDisabled}
                             onClick={handleCreateLink}
                         >
                             {loadingContext ? (
                                 "Đang tải ad space & hợp đồng..."
+                            ) : loadingLink ? (
+                                "Đang tạo link..."
                             ) : (
                                 <span className="getlink-form__button-inner">
                                     <LinkChainIcon size={20} />

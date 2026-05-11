@@ -101,12 +101,17 @@
 
 /* ─── ONE CLICK SECTION ─── */
 .jd-oneclick {
-    margin: 0;
-    background: #FFF4ED;
-    border: 1px solid #EF4A22;
+    margin: 12px 16px;
+    background: url('../static/oneclick-bg-v2.svg') center/cover no-repeat;
     border-radius: 12px;
     padding: 14px 16px 16px;
-    margin: 12px 16px;
+    border: none;
+    aspect-ratio: 343/210;
+
+    &--nobtn {
+        background: url('../static/oneclick-bg-nobtn-v2.svg') center/cover no-repeat;
+        aspect-ratio: 343/158;
+    }
 }
 
 .jd-oneclick__header {
@@ -199,8 +204,8 @@
 
     &--outline {
         background: #fff;
-        color: #0068ff;
-        border: 1.5px solid #0068ff;
+        color: #EF4A22;
+        border: 1.5px solid #EF4A22;
 
         img,
         svg {
@@ -209,7 +214,7 @@
     }
 
     &--primary-blue {
-        background: #0068ff;
+        background: #EF4A22;
         color: #fff;
 
         img,
@@ -451,8 +456,8 @@
     align-items: center;
     justify-content: center;
     gap: 8px;
-    padding: 14px;
-    border-radius: 12px;
+    padding: 13px;
+    border-radius: 9999px;
     background: #EF4A22;
     color: #fff;
     font-size: 16px;
@@ -472,12 +477,12 @@
 
     &--outline {
         background: #fff;
-        color: #0068ff;
-        border: 2px solid #0068ff;
+        color: #EF4A22;
+        border: 2px solid #EF4A22;
     }
 
     &--primary-blue {
-        background: #0068ff;
+        background: #EF4A22;
         color: #fff;
     }
 

@@ -5,6 +5,7 @@ import { fetchPaymentInvoices, fetchPaymentConfig } from "@/services/api";
 import { InvoiceItem } from "@/types/payment";
 import { BodyPortal, BODY_OVERLAY_Z_INDEX, CUSTOM_DATE_RANGE_BODY_CLASS } from "@/components/base";
 import { formatNumber } from "@/utils/format";
+import { IllustrationEmptyInvoice } from "@/components/icons/LineIllustrations";
 
 interface StatusConfig {
     value: number;
@@ -420,7 +421,9 @@ const PaymentPage: React.FC = () => {
                     </div>
                 ) : invoices.length === 0 ? (
                     <div className="payment-empty">
-                        <div className="payment-empty__icon">💸</div>
+                        <div className="payment-empty__icon" aria-hidden>
+                            <IllustrationEmptyInvoice />
+                        </div>
                         <Text className="payment-empty__text">Chưa có dữ liệu thanh toán</Text>
                     </div>
                 ) : (
@@ -444,8 +447,8 @@ const PaymentPage: React.FC = () => {
                                     </div>
                                     <div className="payment-card__row">
                                         <span className="payment-card__label">Tổng hoa hồng</span>
-                                        <span className="payment-card__value payment-card__value--amount">
-                                            {formatNumber(Number(item.total_commission || item.amount || 0))} đ
+                                        <span className={`payment-card__value payment-card__value--amount ${getStatusClass(item)}`}>
+                                            +{formatNumber(Number(item.total_commission || item.amount || 0))} đ
                                         </span>
                                     </div>
                                     <div className="payment-card__row">

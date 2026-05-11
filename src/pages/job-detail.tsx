@@ -1,10 +1,15 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "react-router-dom";
-import { Page, Text, Button, Icon, useSnackbar } from "zmp-ui";
+import { Page, Text, Button, Icon, useSnackbar, Modal } from "zmp-ui";
 import { useNavigate } from "zmp-ui";
 import { useAtom, useAtomValue } from "jotai";
 import { Campaign } from "@/types/campaign";
-import { fetchCampaignById, fetchContractsByCampaign } from "@/services/api";
+import {
+    fetchCampaignById,
+    fetchContractsByCampaign,
+    fetchJoinCampaign,
+} from "@/services/api";
+import { applyJoinCampaignResponse } from "@/utils/joinCampaignFlow";
 import {
     resolveCtaModeFromCampaignListItem,
     campaignPayloadHasCtaHint,
@@ -13,7 +18,6 @@ import {
 import type { CampaignCardCtaMode } from "@/components/campaign/CampaignCard";
 import { selectedCampaignAtom } from "@/state/job";
 import { authTokenAtom, isGuestAtom } from "@/state/auth";
-import { openExternalUrl } from "@/utils/openExternalUrl";
 import iconStepChoose from "@/static/icons/step-choose.svg";
 import iconStepShare from "@/static/icons/step-share.svg";
 import iconStepEarn from "@/static/icons/step-earn.svg";
@@ -25,6 +29,7 @@ import iconCalendar from "@/static/icons/ic_calenda.svg";
 import iconCashTime from "@/static/icons/ic_cash_time.svg";
 import iconStatus from "@/static/icons/ic_status.svg";
 import { LinkChainIcon } from "@/components/icons/LinkChainIcon";
+import { IllustrationEmptyMissing } from "@/components/icons/LineIllustrations";
 
 /** Helper: device_type → label */
 function getDeviceLabel(dt: number): string {
@@ -45,19 +50,6 @@ function getStatusBadge(s: number): { label: string; color: string; bg: string; 
     }
 }
 
-/** Helper: file extension → icon + label */
-function getFileInfo(url: string): { icon: string; label: string; ext: string } {
-    const name = url.split("/").pop() || url;
-    const ext = name.split(".").pop()?.toLowerCase() || "";
-    if (["xlsx", "xls", "csv"].includes(ext)) return { icon: "📊", label: name, ext: ext.toUpperCase() };
-    if (["html", "htm"].includes(ext)) return { icon: "🌐", label: "Landing Page", ext: "HTML" };
-    if (["pdf"].includes(ext)) return { icon: "📄", label: name, ext: "PDF" };
-    if (["png", "jpg", "jpeg", "gif", "webp"].includes(ext)) return { icon: "🖼️", label: name, ext: ext.toUpperCase() };
-    return { icon: "📎", label: name, ext: ext.toUpperCase() };
-}
-
-
-
 const JobDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
@@ -70,6 +62,10 @@ const JobDetailPage: React.FC = () => {
     const [ctaLoading, setCtaLoading] = useState(false);
     const oneClickRef = useRef<HTMLDivElement>(null);
     const [showFooter, setShowFooter] = useState(false);
+    const [adSpaceModal, setAdSpaceModal] = useState<{ open: boolean; message: string }>({
+        open: false,
+        message: "",
+    });
 
     useEffect(() => {
         const el = oneClickRef.current;
@@ -137,35 +133,31 @@ const JobDetailPage: React.FC = () => {
             return;
         }
         if (ctaMode === "join") {
-            // TODO: Gọi api fetchJoinCampaign giống bên CampaignCard
-
-            try {
-                const raw = String((campaign as { url?: unknown }).url ?? "").trim();
-                if (!raw) {
-                    openSnackbar({
-                        type: "warning",
-                        text: "Không có liên kết tham gia. Bạn có thể chưa thuộc phân khúc publisher của chiến dịch — vui lòng liên hệ hỗ trợ.",
-                        duration: 4500,
+            setCtaLoading(true);
+            void (async () => {
+                try {
+                    const res = await fetchJoinCampaign({ campaign_id: campaign.id });
+                    await applyJoinCampaignResponse(res, {
+                        openSnackbar: ({ type, text, duration }) =>
+                            openSnackbar({ type, text, duration: duration ?? 3500 }),
+                        navigate,
+                        onSuccess: async () => {
+                            const data = await fetchCampaignById(id);
+                            if (data) setCampaign(data);
+                        },
+                        onNeedAdSpace: (message) => setAdSpaceModal({ open: true, message }),
                     });
-                    return;
+                } catch (e) {
+                    console.error("[job-detail] Tham gia:", e);
+                    openSnackbar({
+                        type: "error",
+                        text: "Có lỗi xảy ra. Vui lòng thử lại.",
+                        duration: 3500,
+                    });
+                } finally {
+                    setCtaLoading(false);
                 }
-                openSnackbar({
-                    type: "default",
-                    text: "Đang mở trang tham gia chiến dịch…",
-                    duration: 2000,
-                });
-                /** Tránh race snackbar + native bridge trong cùng một tick (một số máy crash). */
-                window.setTimeout(() => {
-                    void openExternalUrl(raw);
-                }, 0);
-            } catch (e) {
-                console.error("[job-detail] Tham gia:", e);
-                openSnackbar({
-                    type: "error",
-                    text: "Không thể mở liên kết. Vui lòng thử lại.",
-                    duration: 3500,
-                });
-            }
+            })();
             return;
         }
         if (ctaMode === "create-link") {
@@ -193,7 +185,9 @@ const JobDetailPage: React.FC = () => {
         return (
             <Page className="detail-page">
                 <div className="empty-state">
-                    <div className="empty-state__icon">😔</div>
+                    <div className="empty-state__icon" aria-hidden>
+                        <IllustrationEmptyMissing />
+                    </div>
                     <Text size="normal" className="empty-state__text">Không tìm thấy chiến dịch</Text>
                     <Button size="medium" onClick={() => navigate("/")} style={{ marginTop: 16 }}>Quay lại trang chủ</Button>
                 </div>
@@ -207,8 +201,6 @@ const JobDetailPage: React.FC = () => {
     const commissionDisplay = rate > 0 ? `${rate}%` : val > 0 ? `${val.toLocaleString('vi-VN')}đ` : "Liên hệ";
     const imageUrl = campaign.logo || "https://via.placeholder.com/375x200?text=No+Image";
     const statusBadge = getStatusBadge(campaign.status);
-    const files = (campaign as any).files || [];
-
     // Tags
     const tags: { label: string; checked?: boolean }[] = [];
     if (campaign.type?.name) tags.push({ label: campaign.type.name });
@@ -451,6 +443,36 @@ const JobDetailPage: React.FC = () => {
                     )}
                 </button>
             </div>
+
+            <Modal
+                visible={adSpaceModal.open}
+                title="Thông báo"
+                onClose={() => setAdSpaceModal({ open: false, message: "" })}
+            >
+                <div style={{ padding: "8px 0 16px" }}>
+                    <Text size="normal" style={{ marginBottom: 20, lineHeight: 1.5 }}>
+                        {adSpaceModal.message}
+                    </Text>
+                    <div style={{ display: "flex", gap: 12 }}>
+                        <Button
+                            variant="secondary"
+                            fullWidth
+                            onClick={() => setAdSpaceModal({ open: false, message: "" })}
+                        >
+                            Đóng
+                        </Button>
+                        <Button
+                            fullWidth
+                            onClick={() => {
+                                setAdSpaceModal({ open: false, message: "" });
+                                navigate("/profile");
+                            }}
+                        >
+                            Đến Hồ sơ
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
         </Page>
     );
 };
