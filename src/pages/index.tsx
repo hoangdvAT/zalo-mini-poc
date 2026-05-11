@@ -1,7 +1,7 @@
 import React, { useEffect, useCallback, useState } from "react";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai";
-import { Page, Text } from "zmp-ui";
+import { Page, Text, Switch } from "zmp-ui";
 import { useNavigate } from "zmp-ui";
 
 import {
@@ -341,44 +341,14 @@ const HomePage: React.FC = () => {
             </Text.Title>
           </div>
           {!isGuest && (
-            <div 
-              style={{
-                display: "flex",
-                background: "#F3F4F6",
-                borderRadius: 20,
-                padding: 2,
-                fontSize: 13,
-                fontWeight: 600,
-              }}
-            >
-              <div
-                onClick={() => setShowJoinedOnly(false)}
-                style={{
-                  padding: "4px 12px",
-                  borderRadius: 18,
-                  cursor: "pointer",
-                  color: !showJoinedOnly ? "#FFF" : "#6B7280",
-                  background: !showJoinedOnly ? "#EF4A22" : "transparent",
-                  transition: "all 0.2s ease",
-                  boxShadow: !showJoinedOnly ? "0 2px 4px rgba(239, 74, 34, 0.2)" : "none"
-                }}
-              >
-                Tất cả
-              </div>
-              <div
-                onClick={() => setShowJoinedOnly(true)}
-                style={{
-                  padding: "4px 12px",
-                  borderRadius: 18,
-                  cursor: "pointer",
-                  color: showJoinedOnly ? "#FFF" : "#6B7280",
-                  background: showJoinedOnly ? "#EF4A22" : "transparent",
-                  transition: "all 0.2s ease",
-                  boxShadow: showJoinedOnly ? "0 2px 4px rgba(239, 74, 34, 0.2)" : "none"
-                }}
-              >
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Text size="small" style={{ color: "#6B7280", fontWeight: 500 }}>
                 Đã tham gia
-              </div>
+              </Text>
+              <Switch
+                checked={showJoinedOnly}
+                onChange={(e) => setShowJoinedOnly(e.target.checked)}
+              />
             </div>
           )}
         </div>
