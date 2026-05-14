@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback, useState } from "react";
-import { useAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
 import { useAtomValue } from "jotai";
 import { Page, Text, Switch } from "zmp-ui";
 import { useNavigate } from "zmp-ui";
@@ -13,6 +13,7 @@ import {
   searchQueryAtom,
   selectedCategoryIdAtom,
   categoriesAtom,
+  selectedCampaignAtom,
 } from "@/state/job";
 import { isGuestAtom } from "@/state/auth";
 import { shareSheetStateAtom } from "@/state/share";
@@ -54,6 +55,7 @@ const HomePage: React.FC = () => {
   const [categories, setCategories] = useAtom(categoriesAtom);
   const isGuest = useAtomValue(isGuestAtom);
   const [, setShareState] = useAtom(shareSheetStateAtom);
+  const setSelectedCampaign = useSetAtom(selectedCampaignAtom);
   const [sharingInProgress, setSharingInProgress] = useState(false);
   const navigate = useNavigate();
 
@@ -311,7 +313,12 @@ const HomePage: React.FC = () => {
           ctaMode,
           variant: "home" as const,
           contractsLoading: false,
-          onCardClick: () => navigate(`/job/${campaign.id}`),
+          onCardClick: () => {
+            // Set campaign từ list (có total/active/pending) trước khi navigate
+            // để job-detail dùng ngay cho CTA mà không cần đợi fetchCampaignById
+            setSelectedCampaign(campaign);
+            navigate(`/job/${campaign.id}`);
+          },
           onJoinSuccess: reloadCampaigns,
         };
   };
@@ -392,3 +399,4 @@ const HomePage: React.FC = () => {
 };
 
 export default HomePage;
+

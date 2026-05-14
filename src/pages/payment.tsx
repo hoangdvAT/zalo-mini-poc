@@ -142,7 +142,7 @@ const PaymentPage: React.FC = () => {
 
     const loadData = useCallback(async (pageToLoad = 1, isReload = false) => {
         if (!isAuthenticated) return;
-        
+
         if (isReload) setLoading(true);
         else setLoadingMore(true);
 
@@ -162,7 +162,7 @@ const PaymentPage: React.FC = () => {
             } else {
                 setInvoices(prev => [...prev, ...response.invoices]);
             }
-            
+
             setHasMore(response.meta.current_page < (Math.ceil(response.meta.total / 20) || 1));
             setPage(response.meta.current_page);
         } catch (error) {
@@ -431,30 +431,30 @@ const PaymentPage: React.FC = () => {
                         {invoices.map(item => (
                             <div key={item.id || item.invoice_code} className="payment-card">
                                 <div className="payment-card__header">
-                                    <span className="payment-card__month">Tháng {formatMonth(item.date_to)}</span>
+                                    <div className="payment-card__heading">
+                                        <span className="payment-card__month">Tháng {formatMonth(item.date_to)}</span>
+                                        <span className="payment-card__code">{item.invoice_code}</span>
+                                    </div>
                                     <span className={`payment-card__status payment-card__status--${getStatusClass(item)}`}>
                                         {getStatusLabel(item)}
                                     </span>
                                 </div>
                                 <div className="payment-card__body">
                                     <div className="payment-card__row">
-                                        <span className="payment-card__label">Mã hóa đơn</span>
-                                        <span className="payment-card__value payment-card__value--link">{item.invoice_code}</span>
-                                    </div>
-                                    <div className="payment-card__row">
                                         <span className="payment-card__label">Kỳ đối soát</span>
                                         <span className="payment-card__value">{formatDateDisplay(item.date_to)}</span>
-                                    </div>
-                                    <div className="payment-card__row">
-                                        <span className="payment-card__label">Tổng hoa hồng</span>
-                                        <span className={`payment-card__value payment-card__value--amount ${getStatusClass(item)}`}>
-                                            +{formatNumber(Number(item.total_commission || item.amount || 0))} đ
-                                        </span>
                                     </div>
                                     <div className="payment-card__row">
                                         <span className="payment-card__label">Ngày thanh toán</span>
                                         <span className="payment-card__value">
                                             {item.date_paid ? formatDateDisplay(item.date_paid) : '-'}
+                                        </span>
+                                    </div>
+                                    <div className="payment-card__divider" />
+                                    <div className="payment-card__row payment-card__row--amount">
+                                        <span className="payment-card__label">Tổng hoa hồng</span>
+                                        <span className={`payment-card__value payment-card__value--amount ${getStatusClass(item)}`}>
+                                            +{formatNumber(Number(item.total_commission || item.amount || 0))} đ
                                         </span>
                                     </div>
                                 </div>
@@ -471,405 +471,405 @@ const PaymentPage: React.FC = () => {
 
             {/* Ngày thanh toán — cùng pattern kỳ đối soát; portal tránh bottom nav đè */}
             <BodyPortal>
-            <Sheet visible={datePaidSheetVisible} onClose={() => setDatePaidSheetVisible(false)} autoHeight zIndex={BODY_OVERLAY_Z_INDEX}>
-                <div className="filter-sheet-header">
-                    <Text.Title className="filter-sheet-header__title">Chọn ngày thanh toán</Text.Title>
-                    <div onClick={() => setDatePaidSheetVisible(false)}>
-                        <Icon icon="zi-close" />
-                    </div>
-                </div>
-                <Box className="filter-sheet-content">
-                    <div
-                        className="filter-option"
-                        onClick={() => {
-                            const today = new Date();
-                            applyPaidDateRange(today, today, "Hôm nay");
-                        }}
-                    >
-                        Hôm nay
-                    </div>
-                    <div
-                        className="filter-option"
-                        onClick={() => {
-                            const today = new Date();
-                            const past7 = new Date();
-                            past7.setDate(today.getDate() - 6);
-                            applyPaidDateRange(past7, today, "7 ngày qua");
-                        }}
-                    >
-                        7 ngày qua
-                    </div>
-                    <div
-                        className="filter-option"
-                        onClick={() => {
-                            const today = new Date();
-                            const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-                            const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-                            applyPaidDateRange(firstDay, lastDay, "Tháng này");
-                        }}
-                    >
-                        Tháng này
-                    </div>
-                    <div
-                        className="filter-option"
-                        onClick={() => {
-                            const today = new Date();
-                            const firstDay = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-                            const lastDay = new Date(today.getFullYear(), today.getMonth(), 0);
-                            applyPaidDateRange(firstDay, lastDay, "Tháng trước");
-                        }}
-                    >
-                        Tháng trước
-                    </div>
-                    <div className="filter-option" onClick={openCustomPaidDateRange}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                            <Icon icon="zi-calendar" size={16} /> Tùy chỉnh (Chọn ngày)
+                <Sheet visible={datePaidSheetVisible} onClose={() => setDatePaidSheetVisible(false)} autoHeight zIndex={BODY_OVERLAY_Z_INDEX}>
+                    <div className="filter-sheet-header">
+                        <Text.Title className="filter-sheet-header__title">Chọn ngày thanh toán</Text.Title>
+                        <div onClick={() => setDatePaidSheetVisible(false)}>
+                            <Icon icon="zi-close" />
                         </div>
                     </div>
-                </Box>
-            </Sheet>
+                    <Box className="filter-sheet-content">
+                        <div
+                            className="filter-option"
+                            onClick={() => {
+                                const today = new Date();
+                                applyPaidDateRange(today, today, "Hôm nay");
+                            }}
+                        >
+                            Hôm nay
+                        </div>
+                        <div
+                            className="filter-option"
+                            onClick={() => {
+                                const today = new Date();
+                                const past7 = new Date();
+                                past7.setDate(today.getDate() - 6);
+                                applyPaidDateRange(past7, today, "7 ngày qua");
+                            }}
+                        >
+                            7 ngày qua
+                        </div>
+                        <div
+                            className="filter-option"
+                            onClick={() => {
+                                const today = new Date();
+                                const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+                                const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                                applyPaidDateRange(firstDay, lastDay, "Tháng này");
+                            }}
+                        >
+                            Tháng này
+                        </div>
+                        <div
+                            className="filter-option"
+                            onClick={() => {
+                                const today = new Date();
+                                const firstDay = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                                const lastDay = new Date(today.getFullYear(), today.getMonth(), 0);
+                                applyPaidDateRange(firstDay, lastDay, "Tháng trước");
+                            }}
+                        >
+                            Tháng trước
+                        </div>
+                        <div className="filter-option" onClick={openCustomPaidDateRange}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                <Icon icon="zi-calendar" size={16} /> Tùy chỉnh (Chọn ngày)
+                            </div>
+                        </div>
+                    </Box>
+                </Sheet>
             </BodyPortal>
 
             {/* Kỳ đối soát — giống sheet Thời gian ở Báo cáo */}
             <BodyPortal>
-            <Sheet visible={dateSheetVisible} onClose={() => setDateSheetVisible(false)} autoHeight zIndex={BODY_OVERLAY_Z_INDEX}>
-                <div className="filter-sheet-header">
-                    <Text.Title className="filter-sheet-header__title">Chọn kỳ đối soát</Text.Title>
-                    <div onClick={() => setDateSheetVisible(false)}>
-                        <Icon icon="zi-close" />
-                    </div>
-                </div>
-                <Box className="filter-sheet-content">
-                    <div
-                        className="filter-option"
-                        onClick={() => {
-                            const today = new Date();
-                            applyDateRange(today, today, "Hôm nay");
-                        }}
-                    >
-                        Hôm nay
-                    </div>
-                    <div
-                        className="filter-option"
-                        onClick={() => {
-                            const today = new Date();
-                            const past7 = new Date();
-                            past7.setDate(today.getDate() - 6);
-                            applyDateRange(past7, today, "7 ngày qua");
-                        }}
-                    >
-                        7 ngày qua
-                    </div>
-                    <div
-                        className="filter-option"
-                        onClick={() => {
-                            const today = new Date();
-                            const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-                            const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-                            applyDateRange(firstDay, lastDay, "Tháng này");
-                        }}
-                    >
-                        Tháng này
-                    </div>
-                    <div
-                        className="filter-option"
-                        onClick={() => {
-                            const today = new Date();
-                            const firstDay = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-                            const lastDay = new Date(today.getFullYear(), today.getMonth(), 0);
-                            applyDateRange(firstDay, lastDay, "Tháng trước");
-                        }}
-                    >
-                        Tháng trước
-                    </div>
-                    <div className="filter-option" onClick={openCustomDateRange}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                            <Icon icon="zi-calendar" size={16} /> Tùy chỉnh (Chọn ngày)
+                <Sheet visible={dateSheetVisible} onClose={() => setDateSheetVisible(false)} autoHeight zIndex={BODY_OVERLAY_Z_INDEX}>
+                    <div className="filter-sheet-header">
+                        <Text.Title className="filter-sheet-header__title">Chọn kỳ đối soát</Text.Title>
+                        <div onClick={() => setDateSheetVisible(false)}>
+                            <Icon icon="zi-close" />
                         </div>
                     </div>
-                </Box>
-            </Sheet>
+                    <Box className="filter-sheet-content">
+                        <div
+                            className="filter-option"
+                            onClick={() => {
+                                const today = new Date();
+                                applyDateRange(today, today, "Hôm nay");
+                            }}
+                        >
+                            Hôm nay
+                        </div>
+                        <div
+                            className="filter-option"
+                            onClick={() => {
+                                const today = new Date();
+                                const past7 = new Date();
+                                past7.setDate(today.getDate() - 6);
+                                applyDateRange(past7, today, "7 ngày qua");
+                            }}
+                        >
+                            7 ngày qua
+                        </div>
+                        <div
+                            className="filter-option"
+                            onClick={() => {
+                                const today = new Date();
+                                const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+                                const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                                applyDateRange(firstDay, lastDay, "Tháng này");
+                            }}
+                        >
+                            Tháng này
+                        </div>
+                        <div
+                            className="filter-option"
+                            onClick={() => {
+                                const today = new Date();
+                                const firstDay = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                                const lastDay = new Date(today.getFullYear(), today.getMonth(), 0);
+                                applyDateRange(firstDay, lastDay, "Tháng trước");
+                            }}
+                        >
+                            Tháng trước
+                        </div>
+                        <div className="filter-option" onClick={openCustomDateRange}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                <Icon icon="zi-calendar" size={16} /> Tùy chỉnh (Chọn ngày)
+                            </div>
+                        </div>
+                    </Box>
+                </Sheet>
             </BodyPortal>
 
             {/* Trạng thái — giống sheet Trạng thái ở Báo cáo */}
             <BodyPortal>
-            <Sheet visible={statusSheetVisible} onClose={() => setStatusSheetVisible(false)} autoHeight zIndex={BODY_OVERLAY_Z_INDEX}>
-                <div className="filter-sheet-header">
-                    <Text.Title className="filter-sheet-header__title">Chọn trạng thái</Text.Title>
-                    <div onClick={() => setStatusSheetVisible(false)}>
-                        <Icon icon="zi-close" />
+                <Sheet visible={statusSheetVisible} onClose={() => setStatusSheetVisible(false)} autoHeight zIndex={BODY_OVERLAY_Z_INDEX}>
+                    <div className="filter-sheet-header">
+                        <Text.Title className="filter-sheet-header__title">Chọn trạng thái</Text.Title>
+                        <div onClick={() => setStatusSheetVisible(false)}>
+                            <Icon icon="zi-close" />
+                        </div>
                     </div>
-                </div>
-                <Box className="filter-sheet-content">
-                    <div
-                        className="filter-option"
-                        onClick={() => {
-                            setActiveFilters((prev) => ({ ...prev, status: undefined }));
-                            setStatusSheetVisible(false);
-                        }}
-                    >
-                        Tất cả
-                    </div>
-                    {statusConfig.map((s) => (
+                    <Box className="filter-sheet-content">
                         <div
-                            key={s.value}
                             className="filter-option"
                             onClick={() => {
-                                setActiveFilters((prev) => ({ ...prev, status: s.value }));
+                                setActiveFilters((prev) => ({ ...prev, status: undefined }));
                                 setStatusSheetVisible(false);
                             }}
                         >
-                            {s.name}
+                            Tất cả
                         </div>
-                    ))}
-                </Box>
-            </Sheet>
+                        {statusConfig.map((s) => (
+                            <div
+                                key={s.value}
+                                className="filter-option"
+                                onClick={() => {
+                                    setActiveFilters((prev) => ({ ...prev, status: s.value }));
+                                    setStatusSheetVisible(false);
+                                }}
+                            >
+                                {s.name}
+                            </div>
+                        ))}
+                    </Box>
+                </Sheet>
             </BodyPortal>
 
             {/* Mã hóa đơn — giống pattern UTM ở Báo cáo (Input + Áp dụng) */}
             <BodyPortal>
-            <Sheet visible={codeSheetVisible} onClose={() => setCodeSheetVisible(false)} autoHeight zIndex={BODY_OVERLAY_Z_INDEX}>
-                <div className="filter-sheet-header">
-                    <Text.Title className="filter-sheet-header__title">Lọc theo mã hóa đơn</Text.Title>
-                    <div onClick={() => setCodeSheetVisible(false)}>
-                        <Icon icon="zi-close" />
+                <Sheet visible={codeSheetVisible} onClose={() => setCodeSheetVisible(false)} autoHeight zIndex={BODY_OVERLAY_Z_INDEX}>
+                    <div className="filter-sheet-header">
+                        <Text.Title className="filter-sheet-header__title">Lọc theo mã hóa đơn</Text.Title>
+                        <div onClick={() => setCodeSheetVisible(false)}>
+                            <Icon icon="zi-close" />
+                        </div>
                     </div>
-                </div>
-                <Box className="filter-sheet-content" p={4} pb={6}>
-                    <Input
-                        placeholder="Nhập mã hóa đơn..."
-                        value={draftInvoiceCode}
-                        onChange={(e) => setDraftInvoiceCode(e.target.value)}
-                        clearable
-                    />
-                    <Button
-                        fullWidth
-                        style={{ marginTop: 24 }}
-                        onClick={() => {
-                            setActiveFilters((prev) => ({
-                                ...prev,
-                                invoice_code: draftInvoiceCode.trim(),
-                            }));
-                            setCodeSheetVisible(false);
-                        }}
-                    >
-                        Áp dụng
-                    </Button>
-                </Box>
-            </Sheet>
+                    <Box className="filter-sheet-content" p={4} pb={6}>
+                        <Input
+                            placeholder="Nhập mã hóa đơn..."
+                            value={draftInvoiceCode}
+                            onChange={(e) => setDraftInvoiceCode(e.target.value)}
+                            clearable
+                        />
+                        <Button
+                            fullWidth
+                            style={{ marginTop: 24 }}
+                            onClick={() => {
+                                setActiveFilters((prev) => ({
+                                    ...prev,
+                                    invoice_code: draftInvoiceCode.trim(),
+                                }));
+                                setCodeSheetVisible(false);
+                            }}
+                        >
+                            Áp dụng
+                        </Button>
+                    </Box>
+                </Sheet>
             </BodyPortal>
 
             {/* Tùy chỉnh kỳ — overlay giống Báo cáo */}
             {datePickerVisible && (
                 <BodyPortal>
-                <div
-                    style={{
-                        position: "fixed",
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        backgroundColor: "rgba(0, 0, 0, 0.5)",
-                        zIndex: BODY_OVERLAY_Z_INDEX,
-                        display: "flex",
-                        alignItems: "flex-end",
-                    }}
-                >
                     <div
                         style={{
-                            backgroundColor: "#fff",
-                            width: "100%",
-                            borderTopLeftRadius: "16px",
-                            borderTopRightRadius: "16px",
-                            paddingBottom: "24px",
+                            position: "fixed",
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            backgroundColor: "rgba(0, 0, 0, 0.5)",
+                            zIndex: BODY_OVERLAY_Z_INDEX,
+                            display: "flex",
+                            alignItems: "flex-end",
                         }}
                     >
-                        <div className="filter-sheet-header" style={{ padding: "16px 16px 0 16px", borderBottom: "none" }}>
-                            <Text.Title className="filter-sheet-header__title">Tùy chỉnh kỳ đối soát</Text.Title>
-                            <div onClick={() => setDatePickerVisible(false)}>
-                                <Icon icon="zi-close" />
+                        <div
+                            style={{
+                                backgroundColor: "#fff",
+                                width: "100%",
+                                borderTopLeftRadius: "16px",
+                                borderTopRightRadius: "16px",
+                                paddingBottom: "24px",
+                            }}
+                        >
+                            <div className="filter-sheet-header" style={{ padding: "16px 16px 0 16px", borderBottom: "none" }}>
+                                <Text.Title className="filter-sheet-header__title">Tùy chỉnh kỳ đối soát</Text.Title>
+                                <div onClick={() => setDatePickerVisible(false)}>
+                                    <Icon icon="zi-close" />
+                                </div>
                             </div>
+                            <Box className="filter-sheet-content" p={4} pb={0}>
+                                <div style={{ display: "flex", gap: "12px" }}>
+                                    <Box style={{ flex: 1 }}>
+                                        <Text size="small" bold style={{ marginBottom: "8px", color: "#666" }}>
+                                            Từ ngày
+                                        </Text>
+                                        {customPeriodPickersReady ? (
+                                            <DatePicker
+                                                dateFormat="dd/mm/yyyy"
+                                                title="Từ ngày"
+                                                action={{ text: "Xong", close: true }}
+                                                value={tempStartDate}
+                                                onChange={(val: unknown) => setTempStartDate(val as Date)}
+                                            />
+                                        ) : (
+                                            <div
+                                                style={{
+                                                    minHeight: 44,
+                                                    borderRadius: 8,
+                                                    border: "1px solid #eee",
+                                                    background: "#fafafa",
+                                                }}
+                                            />
+                                        )}
+                                    </Box>
+                                    <Box style={{ flex: 1 }}>
+                                        <Text size="small" bold style={{ marginBottom: "8px", color: "#666" }}>
+                                            Đến ngày
+                                        </Text>
+                                        {customPeriodPickersReady ? (
+                                            <DatePicker
+                                                dateFormat="dd/mm/yyyy"
+                                                title="Đến ngày"
+                                                action={{ text: "Xong", close: true }}
+                                                value={tempEndDate}
+                                                onChange={(val: unknown) => setTempEndDate(val as Date)}
+                                            />
+                                        ) : (
+                                            <div
+                                                style={{
+                                                    minHeight: 44,
+                                                    borderRadius: 8,
+                                                    border: "1px solid #eee",
+                                                    background: "#fafafa",
+                                                }}
+                                            />
+                                        )}
+                                    </Box>
+                                </div>
+                                <Button
+                                    fullWidth
+                                    style={{ marginTop: 24 }}
+                                    onClick={() => {
+                                        const sMs = tempStartDate.getTime();
+                                        const eMs = tempEndDate.getTime();
+                                        const start = sMs <= eMs ? tempStartDate : tempEndDate;
+                                        const end = sMs <= eMs ? tempEndDate : tempStartDate;
+                                        setActiveFilters((prev) => ({
+                                            ...prev,
+                                            date_start: formatDateYmd(start),
+                                            date_end: formatDateYmd(end),
+                                        }));
+                                        setDateFilterLabel(
+                                            `${start.toLocaleDateString("vi-VN")} - ${end.toLocaleDateString("vi-VN")}`
+                                        );
+                                        setDatePickerVisible(false);
+                                    }}
+                                >
+                                    Áp dụng
+                                </Button>
+                            </Box>
                         </div>
-                        <Box className="filter-sheet-content" p={4} pb={0}>
-                            <div style={{ display: "flex", gap: "12px" }}>
-                                <Box style={{ flex: 1 }}>
-                                    <Text size="small" bold style={{ marginBottom: "8px", color: "#666" }}>
-                                        Từ ngày
-                                    </Text>
-                                    {customPeriodPickersReady ? (
-                                        <DatePicker
-                                            dateFormat="dd/mm/yyyy"
-                                            title="Từ ngày"
-                                            action={{ text: "Xong", close: true }}
-                                            value={tempStartDate}
-                                            onChange={(val: unknown) => setTempStartDate(val as Date)}
-                                        />
-                                    ) : (
-                                        <div
-                                            style={{
-                                                minHeight: 44,
-                                                borderRadius: 8,
-                                                border: "1px solid #eee",
-                                                background: "#fafafa",
-                                            }}
-                                        />
-                                    )}
-                                </Box>
-                                <Box style={{ flex: 1 }}>
-                                    <Text size="small" bold style={{ marginBottom: "8px", color: "#666" }}>
-                                        Đến ngày
-                                    </Text>
-                                    {customPeriodPickersReady ? (
-                                        <DatePicker
-                                            dateFormat="dd/mm/yyyy"
-                                            title="Đến ngày"
-                                            action={{ text: "Xong", close: true }}
-                                            value={tempEndDate}
-                                            onChange={(val: unknown) => setTempEndDate(val as Date)}
-                                        />
-                                    ) : (
-                                        <div
-                                            style={{
-                                                minHeight: 44,
-                                                borderRadius: 8,
-                                                border: "1px solid #eee",
-                                                background: "#fafafa",
-                                            }}
-                                        />
-                                    )}
-                                </Box>
-                            </div>
-                            <Button
-                                fullWidth
-                                style={{ marginTop: 24 }}
-                                onClick={() => {
-                                    const sMs = tempStartDate.getTime();
-                                    const eMs = tempEndDate.getTime();
-                                    const start = sMs <= eMs ? tempStartDate : tempEndDate;
-                                    const end = sMs <= eMs ? tempEndDate : tempStartDate;
-                                    setActiveFilters((prev) => ({
-                                        ...prev,
-                                        date_start: formatDateYmd(start),
-                                        date_end: formatDateYmd(end),
-                                    }));
-                                    setDateFilterLabel(
-                                        `${start.toLocaleDateString("vi-VN")} - ${end.toLocaleDateString("vi-VN")}`
-                                    );
-                                    setDatePickerVisible(false);
-                                }}
-                            >
-                                Áp dụng
-                            </Button>
-                        </Box>
                     </div>
-                </div>
                 </BodyPortal>
             )}
 
             {/* Tùy chỉnh ngày thanh toán */}
             {datePaidPickerVisible && (
                 <BodyPortal>
-                <div
-                    style={{
-                        position: "fixed",
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        backgroundColor: "rgba(0, 0, 0, 0.5)",
-                        zIndex: BODY_OVERLAY_Z_INDEX,
-                        display: "flex",
-                        alignItems: "flex-end",
-                    }}
-                >
                     <div
                         style={{
-                            backgroundColor: "#fff",
-                            width: "100%",
-                            borderTopLeftRadius: "16px",
-                            borderTopRightRadius: "16px",
-                            paddingBottom: "24px",
+                            position: "fixed",
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            backgroundColor: "rgba(0, 0, 0, 0.5)",
+                            zIndex: BODY_OVERLAY_Z_INDEX,
+                            display: "flex",
+                            alignItems: "flex-end",
                         }}
                     >
-                        <div className="filter-sheet-header" style={{ padding: "16px 16px 0 16px", borderBottom: "none" }}>
-                            <Text.Title className="filter-sheet-header__title">Tùy chỉnh ngày thanh toán</Text.Title>
-                            <div onClick={() => setDatePaidPickerVisible(false)}>
-                                <Icon icon="zi-close" />
+                        <div
+                            style={{
+                                backgroundColor: "#fff",
+                                width: "100%",
+                                borderTopLeftRadius: "16px",
+                                borderTopRightRadius: "16px",
+                                paddingBottom: "24px",
+                            }}
+                        >
+                            <div className="filter-sheet-header" style={{ padding: "16px 16px 0 16px", borderBottom: "none" }}>
+                                <Text.Title className="filter-sheet-header__title">Tùy chỉnh ngày thanh toán</Text.Title>
+                                <div onClick={() => setDatePaidPickerVisible(false)}>
+                                    <Icon icon="zi-close" />
+                                </div>
                             </div>
+                            <Box className="filter-sheet-content" p={4} pb={0}>
+                                <div style={{ display: "flex", gap: "12px" }}>
+                                    <Box style={{ flex: 1 }}>
+                                        <Text size="small" bold style={{ marginBottom: "8px", color: "#666" }}>
+                                            Từ ngày
+                                        </Text>
+                                        {customPaidPickersReady ? (
+                                            <DatePicker
+                                                dateFormat="dd/mm/yyyy"
+                                                title="Từ ngày"
+                                                action={{ text: "Xong", close: true }}
+                                                value={tempPaidStartDate}
+                                                onChange={(val: unknown) => setTempPaidStartDate(val as Date)}
+                                            />
+                                        ) : (
+                                            <div
+                                                style={{
+                                                    minHeight: 44,
+                                                    borderRadius: 8,
+                                                    border: "1px solid #eee",
+                                                    background: "#fafafa",
+                                                }}
+                                            />
+                                        )}
+                                    </Box>
+                                    <Box style={{ flex: 1 }}>
+                                        <Text size="small" bold style={{ marginBottom: "8px", color: "#666" }}>
+                                            Đến ngày
+                                        </Text>
+                                        {customPaidPickersReady ? (
+                                            <DatePicker
+                                                dateFormat="dd/mm/yyyy"
+                                                title="Đến ngày"
+                                                action={{ text: "Xong", close: true }}
+                                                value={tempPaidEndDate}
+                                                onChange={(val: unknown) => setTempPaidEndDate(val as Date)}
+                                            />
+                                        ) : (
+                                            <div
+                                                style={{
+                                                    minHeight: 44,
+                                                    borderRadius: 8,
+                                                    border: "1px solid #eee",
+                                                    background: "#fafafa",
+                                                }}
+                                            />
+                                        )}
+                                    </Box>
+                                </div>
+                                <Button
+                                    fullWidth
+                                    style={{ marginTop: 24 }}
+                                    onClick={() => {
+                                        const sMs = tempPaidStartDate.getTime();
+                                        const eMs = tempPaidEndDate.getTime();
+                                        const start = sMs <= eMs ? tempPaidStartDate : tempPaidEndDate;
+                                        const end = sMs <= eMs ? tempPaidEndDate : tempPaidStartDate;
+                                        setActiveFilters((prev) => ({
+                                            ...prev,
+                                            date_paid_start: formatDateYmd(start),
+                                            date_paid_end: formatDateYmd(end),
+                                        }));
+                                        setDatePaidFilterLabel(
+                                            `${start.toLocaleDateString("vi-VN")} - ${end.toLocaleDateString("vi-VN")}`
+                                        );
+                                        setDatePaidPickerVisible(false);
+                                    }}
+                                >
+                                    Áp dụng
+                                </Button>
+                            </Box>
                         </div>
-                        <Box className="filter-sheet-content" p={4} pb={0}>
-                            <div style={{ display: "flex", gap: "12px" }}>
-                                <Box style={{ flex: 1 }}>
-                                    <Text size="small" bold style={{ marginBottom: "8px", color: "#666" }}>
-                                        Từ ngày
-                                    </Text>
-                                    {customPaidPickersReady ? (
-                                        <DatePicker
-                                            dateFormat="dd/mm/yyyy"
-                                            title="Từ ngày"
-                                            action={{ text: "Xong", close: true }}
-                                            value={tempPaidStartDate}
-                                            onChange={(val: unknown) => setTempPaidStartDate(val as Date)}
-                                        />
-                                    ) : (
-                                        <div
-                                            style={{
-                                                minHeight: 44,
-                                                borderRadius: 8,
-                                                border: "1px solid #eee",
-                                                background: "#fafafa",
-                                            }}
-                                        />
-                                    )}
-                                </Box>
-                                <Box style={{ flex: 1 }}>
-                                    <Text size="small" bold style={{ marginBottom: "8px", color: "#666" }}>
-                                        Đến ngày
-                                    </Text>
-                                    {customPaidPickersReady ? (
-                                        <DatePicker
-                                            dateFormat="dd/mm/yyyy"
-                                            title="Đến ngày"
-                                            action={{ text: "Xong", close: true }}
-                                            value={tempPaidEndDate}
-                                            onChange={(val: unknown) => setTempPaidEndDate(val as Date)}
-                                        />
-                                    ) : (
-                                        <div
-                                            style={{
-                                                minHeight: 44,
-                                                borderRadius: 8,
-                                                border: "1px solid #eee",
-                                                background: "#fafafa",
-                                            }}
-                                        />
-                                    )}
-                                </Box>
-                            </div>
-                            <Button
-                                fullWidth
-                                style={{ marginTop: 24 }}
-                                onClick={() => {
-                                    const sMs = tempPaidStartDate.getTime();
-                                    const eMs = tempPaidEndDate.getTime();
-                                    const start = sMs <= eMs ? tempPaidStartDate : tempPaidEndDate;
-                                    const end = sMs <= eMs ? tempPaidEndDate : tempPaidStartDate;
-                                    setActiveFilters((prev) => ({
-                                        ...prev,
-                                        date_paid_start: formatDateYmd(start),
-                                        date_paid_end: formatDateYmd(end),
-                                    }));
-                                    setDatePaidFilterLabel(
-                                        `${start.toLocaleDateString("vi-VN")} - ${end.toLocaleDateString("vi-VN")}`
-                                    );
-                                    setDatePaidPickerVisible(false);
-                                }}
-                            >
-                                Áp dụng
-                            </Button>
-                        </Box>
                     </div>
-                </div>
                 </BodyPortal>
             )}
         </Page>

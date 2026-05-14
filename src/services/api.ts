@@ -30,6 +30,7 @@ import type {
 
 // Base URL — ưu tiên .env (VITE_API_BASE_URL), fallback staging cũ
 const BASE_URL = "https://pub-be-stag.mp.directsale.vn";
+// const BASE_URL = "https://workspace-api.scalef.com";
 
 // Create axios instance
 const api = axios.create({
@@ -245,18 +246,27 @@ export async function fetchCampaignById(
 
 /**
  * Lấy danh sách contracts của một campaign
- * GET /api/v1/contracts/campaign/{campaign_id}?status=1,2,3,4,5,6
+ * Thử 2 endpoint: /api/v1/contracts?campaign_id=... (ưu tiên) hoặc /api/v1/contracts/campaign/{id}
  */
 export async function fetchContractsByCampaign(
     campaignId: number | string,
     statuses: number[] = [1, 2, 3, 4, 5, 6]
 ): Promise<ContractListResponse> {
     try {
+        // Thử endpoint mới trước (query param)
         const response = await api.get(
+            `/api/v1/contracts?campaign_id=${campaignId}&status=${statuses.join(",")}`
+        );
+        const data = response.data?.data;
+        if (data && (data.contract || data.contracts)) {
+            return data as ContractListResponse;
+        }
+        // Fallback: thử endpoint cũ (path param)
+        const fallbackResponse = await api.get(
             `/api/v1/contracts/campaign/${campaignId}?status=${statuses.join(",")}`
         );
         return (
-            response.data?.data || { contract: [], meta: { domain_deeplink: "" } }
+            fallbackResponse.data?.data || { contract: [], meta: { domain_deeplink: "" } }
         );
     } catch (error) {
         console.error(
@@ -516,8 +526,8 @@ export async function fetchConversions(params: {
         if (params.order_id) queryParams.append("filters[order_id]", params.order_id);
         // if (params.utm_param && params.utm_value) queryParams.append(`filters[${params.utm_param}]`, params.utm_value);
         // if (params.sub_param && params.sub_value) queryParams.append(`filters[${params.sub_param}]`, params.sub_value);
-        if (params.utm_param && params.utm_value) queryParams.append("utm", JSON.stringify({label: params.utm_param, value: params.utm_value}));
-        if (params.sub_param && params.sub_value) queryParams.append("sub", JSON.stringify({label: params.sub_param, value: params.sub_value}));
+        if (params.utm_param && params.utm_value) queryParams.append("utm", JSON.stringify({ label: params.utm_param, value: params.utm_value }));
+        if (params.sub_param && params.sub_value) queryParams.append("sub", JSON.stringify({ label: params.sub_param, value: params.sub_value }));
 
         const response = await api.get(`/api/v1/publisher/conversion?${queryParams.toString()}`);
 
@@ -533,14 +543,14 @@ export async function fetchConversions(params: {
                 typeof m.total_sale_amount === "number"
                     ? m.total_sale_amount
                     : typeof (m as { total_sale_amount?: { amount?: number } }).total_sale_amount?.amount === "number"
-                      ? (m as { total_sale_amount: { amount: number } }).total_sale_amount.amount
-                      : undefined,
+                        ? (m as { total_sale_amount: { amount: number } }).total_sale_amount.amount
+                        : undefined,
             total_pub_commission:
                 typeof m.total_pub_commission === "number"
                     ? m.total_pub_commission
                     : typeof (m as { total_pub_commission?: { amount?: number } }).total_pub_commission?.amount === "number"
-                      ? (m as { total_pub_commission: { amount: number } }).total_pub_commission.amount
-                      : undefined,
+                        ? (m as { total_pub_commission: { amount: number } }).total_pub_commission.amount
+                        : undefined,
             total_conversion_part_quantity:
                 typeof m.total_conversion_part_quantity === "number" ? m.total_conversion_part_quantity : undefined,
         };
@@ -555,13 +565,52 @@ export async function fetchConversions(params: {
     }
 }
 
-export async function fetchConversionDetail(conversionId: string): Promise<any> {
+export async function fetchConversionDetail(id: string): Promise<any> {
     try {
         if (!getAuthToken()) return null;
-        const response = await api.get(`/api/v1/conversion/${conversionId}`);
-        return response.data?.data || response.data || null;
+        const response = await api.get(`/api/v1/conversion/${id}`);
+        const data = response.data?.data;
+        if (!data || typeof data !== "object") return null;
+
+        const nestedConversion =
+            "conversion" in data && data.conversion && typeof data.conversion === "object"
+                ? data.conversion
+                : null;
+
+        // Detail API can return `{ conversion: {...} }` while the sheet expects a flat conversion object.
+        return nestedConversion ? { ...data, ...nestedConversion } : data;
     } catch (error) {
-        console.error(`[API] Error fetching conversion detail ${conversionId}:`, error);
+        console.error(`[API] Error fetching conversion detail ${id}:`, error);
+        return null;
+    }
+}
+
+export async function fetchPublisherRefCode(params: {
+    campaign_id?: string | number | null;
+    publisher_id?: string | number | null;
+    ad_space_code?: string | null;
+}): Promise<string | null> {
+    try {
+        if (!getAuthToken()) return null;
+
+        const queryParams = new URLSearchParams();
+        if (params.campaign_id !== undefined && params.campaign_id !== null) {
+            queryParams.append("filters[campaign_id]", String(params.campaign_id));
+        }
+        if (params.publisher_id !== undefined && params.publisher_id !== null) {
+            queryParams.append("filters[publisher_id]", String(params.publisher_id));
+        }
+        if (params.ad_space_code) {
+            queryParams.append("ad_space_code", params.ad_space_code);
+        }
+
+        const response = await api.get(
+            `/api/v1/publisher-ref-codes/find-one?${queryParams.toString()}`
+        );
+
+        return response.data?.data?.publisherRefCode?.ref_code || null;
+    } catch (error) {
+        console.error("[API] Error fetching publisher ref code:", error);
         return null;
     }
 }
@@ -580,7 +629,7 @@ export async function fetchPaymentInvoices(params: {
 }): Promise<import("@/types/payment").PaymentInvoicesResponse> {
     try {
         if (!getAuthToken()) return { invoices: [], meta: { total: 0, current_page: 1 } };
-        
+
         const queryParams = new URLSearchParams();
         queryParams.append("page", params.page.toString());
         if (params.invoice_code) queryParams.append("filters[invoice_code]", params.invoice_code);
@@ -591,10 +640,10 @@ export async function fetchPaymentInvoices(params: {
         if (params.date_paid_end) queryParams.append("filters[date_paid][end]", params.date_paid_end);
 
         const response = await api.get(`/api/v1/payment/invoices?${queryParams.toString()}`);
-        
+
         const data = response.data?.data;
         if (!data) return { invoices: [], meta: { total: 0, current_page: 1 } };
-        
+
         return {
             invoices: data.invoices || [],
             meta: data.meta || { total: 0, current_page: 1 },
@@ -655,7 +704,7 @@ export async function uploadBase64Image(base64String: string): Promise<string> {
         if (!getAuthToken()) {
             throw new Error("Vui lòng đăng nhập để thực hiện");
         }
-        
+
         // Remove data:image/*;base64, prefix if exists
         const base64Data = base64String.split(',')[1] || base64String;
 
@@ -668,12 +717,46 @@ export async function uploadBase64Image(base64String: string): Promise<string> {
                 }
             ]
         });
-        
+
         // Assuming response structure contains URL
         return response.data?.data?.url || response.data?.data?.image || response.data?.data || "";
     } catch (error) {
         console.error("[API] Error uploading base64 image:", error);
         throw error;
+    }
+}
+
+export async function uploadBase64Files(
+    files: Array<{ data: string; filename: string; mime_type: string }>
+): Promise<{ ok: boolean; uploadedFiles: string[]; message: string }> {
+    try {
+        if (!getAuthToken()) {
+            throw new Error("Vui lòng đăng nhập để thực hiện");
+        }
+
+        const response = await api.post("/api/v1/uploads-base64", { files });
+        const data = response.data?.data;
+        const uploaded = Array.isArray(data?.uploaded_files)
+            ? data.uploaded_files
+            : Array.isArray(data?.files)
+                ? data.files
+                : [];
+
+        const uploadedFiles = uploaded
+            .map((item) => {
+                const file = asRecord(item);
+                return String(file?.url ?? file?.path ?? file?.image ?? "").trim();
+            })
+            .filter(Boolean);
+
+        if (!uploadedFiles.length) {
+            return { ok: false, uploadedFiles: [], message: "Không lấy được URL ảnh đã tải lên." };
+        }
+
+        return { ok: true, uploadedFiles, message: "Tải ảnh thành công." };
+    } catch (error) {
+        console.error("[API] Error uploading base64 files:", error);
+        return { ok: false, uploadedFiles: [], message: "Tải ảnh thất bại." };
     }
 }
 
@@ -709,6 +792,16 @@ export async function fetchPublisherProfile(): Promise<PublisherProfile | null> 
         };
     } catch (error) {
         console.error("[API] Error fetching publisher profile:", error);
+        return null;
+    }
+}
+
+export async function fetchBrandSetting(): Promise<Record<string, unknown> | null> {
+    try {
+        const response = await api.get("/api/v1/brand-setting");
+        return asRecord(response.data?.data?.setting);
+    } catch (error) {
+        console.error("[API] fetchBrandSetting:", error);
         return null;
     }
 }
@@ -788,8 +881,8 @@ function normalizeApiMutationResult(raw: unknown): ApiMutationResult {
         typeof r.message === "string"
             ? r.message
             : status === "success"
-              ? "Thao tác thành công."
-              : "Thao tác thất bại.";
+                ? "Thao tác thành công."
+                : "Thao tác thất bại.";
     const code = typeof r.code === "string" ? r.code : undefined;
     const data = r.data;
     const validation =
@@ -852,6 +945,46 @@ export async function saveEkycContractStep(
             return normalizeApiMutationResult(ax.response.data);
         }
         console.error("[API] saveEkycContractStep:", error);
+        return { ok: false, message: "Không kết nối được máy chủ." };
+    }
+}
+
+export async function initEkycSession(): Promise<{
+    ok: boolean;
+    message: string;
+    data?: Record<string, unknown>;
+}> {
+    if (!getAuthToken()) {
+        return { ok: false, message: "Vui lòng đăng nhập để thực hiện." };
+    }
+
+    try {
+        const response = await api.post("/api/v1/ekyc/init-session", {});
+        const raw = asRecord(response.data) || {};
+        const status = String(raw.status ?? "");
+        const data = asRecord(asRecord(raw.data)?.ekyc) || undefined;
+
+        if (status === "success" && data) {
+            return { ok: true, message: "Khởi tạo EKYC thành công.", data };
+        }
+
+        return {
+            ok: false,
+            message: typeof raw.message === "string" ? raw.message : "Không khởi tạo được phiên EKYC.",
+            data,
+        };
+    } catch (error: unknown) {
+        const ax = error as { response?: { data?: unknown } };
+        const raw = asRecord(ax.response?.data) || null;
+        if (raw) {
+            return {
+                ok: false,
+                message: typeof raw.message === "string" ? raw.message : "Không khởi tạo được phiên EKYC.",
+                data: asRecord(asRecord(raw.data)?.ekyc) || undefined,
+            };
+        }
+
+        console.error("[API] initEkycSession:", error);
         return { ok: false, message: "Không kết nối được máy chủ." };
     }
 }

@@ -1,13 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Box, Text, Input, Button, Icon, Modal, Select, useSnackbar, useNavigate } from "zmp-ui";
+import { Box, Text, Input, Button, Icon, Modal, useSnackbar, useNavigate } from "zmp-ui";
 import {
     checkEkycSidebarStatus,
     confirmLinkScalefPhone,
     fetchBankCoreList,
+    fetchBrandSetting,
     fetchEkycContracts,
     fetchPublisherProfile,
+    initEkycSession,
     linkScalefAccount,
     saveEkycContractStep,
+    uploadBase64Files,
     verifyBankAccount,
 } from "@/services/api";
 import type {
@@ -63,6 +66,15 @@ interface ResignConfig {
     restartStep: ResignStep;
     description: string;
     restartFromBeginning: boolean;
+}
+
+interface EkycSessionState {
+    url: string;
+    token: string;
+    tokenName: string;
+    accessToken: string;
+    resourceId: string;
+    raw: Record<string, unknown>;
 }
 
 const LINK_ACCOUNT_RELEASE_DATE = new Date("2025-12-26T00:00:00+07:00");
@@ -236,6 +248,106 @@ function parseDateToDisplay(value: string): string {
     return `${dd}/${mm}/${yyyy}`;
 }
 
+function normalizeDateForContract(value: unknown): string {
+    const input = textOf(value);
+    if (!input) return "";
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(input)) return input;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(input)) {
+        const [y, m, d] = input.split("-");
+        return `${d}/${m}/${y}`;
+    }
+    const compact = input.replace(/\./g, "/").replace(/-/g, "/");
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(compact)) return compact;
+    const date = new Date(input);
+    if (Number.isNaN(date.getTime())) return input;
+    const dd = String(date.getDate()).padStart(2, "0");
+    const mm = String(date.getMonth() + 1).padStart(2, "0");
+    const yyyy = date.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
+}
+
+function parseMessagePayload(raw: unknown): Record<string, unknown> | null {
+    if (typeof raw === "string") {
+        const trimmed = raw.trim();
+        if (!trimmed) return null;
+        try {
+            return asRecord(JSON.parse(trimmed));
+        } catch {
+            return { result: trimmed };
+        }
+    }
+    return asRecord(raw);
+}
+
+function isBase64Image(value: unknown): value is string {
+    const text = textOf(value);
+    if (!text) return false;
+    if (/^data:image\/[a-zA-Z0-9.+-]+;base64,/.test(text)) return true;
+    return /^[A-Za-z0-9+/=\s]+$/.test(text) && text.replace(/\s+/g, "").length > 200;
+}
+
+function normalizeBase64Image(value: string): { data: string; mimeType: string } {
+    const text = value.trim();
+    const match = /^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/i.exec(text);
+    if (match) {
+        return { data: match[2], mimeType: match[1] };
+    }
+    return { data: text.replace(/\s+/g, ""), mimeType: "image/jpeg" };
+}
+
+function findFirstText(records: Array<Record<string, unknown> | null | undefined>, keys: string[]): string {
+    for (const record of records) {
+        if (!record) continue;
+        for (const key of keys) {
+            const value = textOf(record[key]);
+            if (value) return value;
+        }
+    }
+    return "";
+}
+
+function findFirstBase64ByKeys(value: unknown, keys: string[]): string {
+    const normalizedKeys = keys.map((item) => item.toLowerCase());
+
+    const visit = (input: unknown): string => {
+        if (Array.isArray(input)) {
+            for (const item of input) {
+                const found = visit(item);
+                if (found) return found;
+            }
+            return "";
+        }
+
+        const record = asRecord(input);
+        if (!record) {
+            return isBase64Image(input) ? String(input).trim() : "";
+        }
+
+        for (const [key, value] of Object.entries(record)) {
+            if (normalizedKeys.some((keyword) => key.toLowerCase().includes(keyword)) && isBase64Image(value)) {
+                return String(value).trim();
+            }
+        }
+
+        for (const nested of Object.values(record)) {
+            const found = visit(nested);
+            if (found) return found;
+        }
+
+        return "";
+    };
+
+    return visit(value);
+}
+
+function normalizeGender(value: unknown): string {
+    const text = textOf(value).toLowerCase();
+    if (!text) return "";
+    if (text === "0" || text === "male" || text === "nam") return "MALE";
+    if (text === "1" || text === "female" || text === "nữ" || text === "nu") return "FEMALE";
+    return text.toUpperCase();
+}
+
 function formatDateTime(value: string): string {
     const input = textOf(value);
     if (!input) return "—";
@@ -273,6 +385,20 @@ function contractNo(contract: EkycContractRecord | null): string {
         contract.code ??
         contract.id;
     return value !== undefined && value !== null && String(value) !== "" ? String(value) : "—";
+}
+
+function getBankShortLabel(bankOptions: BankCoreOption[], bankCode?: string, bankName?: string): string {
+    const normalizedCode = textOf(bankCode);
+    const normalizedName = textOf(bankName);
+
+    const matchedBank = bankOptions.find(
+        (bank) =>
+            textOf(bank.bank_code) === normalizedCode ||
+            textOf(bank.bank_name_vi) === normalizedName ||
+            textOf(bank.bank_name) === normalizedName
+    );
+
+    return textOf(matchedBank?.bank_code) || normalizedCode || normalizedName;
 }
 
 function getResignConfig(contract: EkycContractRecord | null): ResignConfig | null {
@@ -453,6 +579,8 @@ export const EContractFlow: React.FC = () => {
     const firstLoadRef = useRef(true);
     const snackbarRef = useRef(openSnackbar);
     const resignFlowStartedRef = useRef(false);
+    const ekycIframeRef = useRef<HTMLIFrameElement | null>(null);
+    const ekycAutoInitKeyRef = useRef<string>("");
 
     const [loading, setLoading] = useState(true);
     const [listLoading, setListLoading] = useState(true);
@@ -465,10 +593,16 @@ export const EContractFlow: React.FC = () => {
     const [isLinkedAccount, setIsLinkedAccount] = useState(false);
     const [view, setView] = useState<FlowView>("payment");
     const [paymentModalVisible, setPaymentModalVisible] = useState(false);
+    const [bankPickerVisible, setBankPickerVisible] = useState(false);
     const [paymentDraft, setPaymentDraft] = useState<PaymentDraftState>(DEFAULT_PAYMENT_DRAFT);
+    const [bankSearchQuery, setBankSearchQuery] = useState("");
     const [paymentEditing, setPaymentEditing] = useState(false);
     const [paymentSaving, setPaymentSaving] = useState(false);
     const [paymentUiState, setPaymentUiState] = useState<PaymentUiState>("idle");
+    const [ekycSession, setEkycSession] = useState<EkycSessionState | null>(null);
+    const [ekycInitLoading, setEkycInitLoading] = useState(false);
+    const [ekycInitError, setEkycInitError] = useState("");
+    const [ekycSaving, setEkycSaving] = useState(false);
     const [linkStepSuccess, setLinkStepSuccess] = useState(false);
     const [resignFlowStarted, setResignFlowStarted] = useState(false);
     const [linkModal, setLinkModal] = useState<LinkModalState>({
@@ -492,12 +626,27 @@ export const EContractFlow: React.FC = () => {
             setLoading(true);
             setListLoading(true);
             try {
-                const [publisher, ekycList, sidebarStatus, banks] = await Promise.all([
+                const [publisher, ekycList, sidebarStatus, banks, brandSetting] = await Promise.all([
                     fetchPublisherProfile(),
                     fetchEkycContracts(1),
                     checkEkycSidebarStatus(),
                     fetchBankCoreList(),
+                    fetchBrandSetting(),
                 ]);
+
+                const enableEkyc =
+                    brandSetting?.enable_ekyc === true ||
+                    String(brandSetting?.enable_ekyc ?? "").trim() === "1";
+                const recordCount = Number(sidebarStatus.ekyc?.record_count ?? 0);
+                if (!enableEkyc || recordCount <= 0) {
+                    snackbarRef.current({
+                        type: "error",
+                        text: "Tài khoản chưa đủ điều kiện để vào Hợp đồng điện tử.",
+                        duration: 3000,
+                    });
+                    navigate(-1);
+                    return;
+                }
 
                 setBankOptions(banks);
                 setIsLinkedAccount(sidebarStatus.linked);
@@ -576,7 +725,7 @@ export const EContractFlow: React.FC = () => {
                 setListLoading(false);
             }
         },
-        []
+        [navigate]
     );
 
     useEffect(() => {
@@ -608,6 +757,22 @@ export const EContractFlow: React.FC = () => {
         };
     }, [bankOptions, contractInfo, form.account_name, form.account_number, form.bank_branch, form.bank_name]);
 
+    const filteredBankOptions = useMemo(() => {
+        const keyword = bankSearchQuery.trim().toLowerCase();
+        if (!keyword) {
+            return bankOptions;
+        }
+
+        return bankOptions.filter((bank) => {
+            return [
+                bank.bank_code,
+                bank.bank_name_vi,
+                bank.bank_name,
+                bank.display_name,
+            ].some((value) => textOf(value).toLowerCase().includes(keyword));
+        });
+    }, [bankOptions, bankSearchQuery]);
+
     const stepStatus = useMemo(() => {
         const allowed = isAllowedCompleteStatus(contractInfo?.contract_status);
         return {
@@ -619,6 +784,24 @@ export const EContractFlow: React.FC = () => {
             complete: allowed && (!showLinkAccountStep || isLinkedAccount),
         };
     }, [contractInfo?.contract_status, currentStepOnServer, isLinkedAccount, showLinkAccountStep]);
+
+    const ekycAutoInitKey = useMemo(
+        () => `${textOf(contractInfo?.id || contractInfo?.contract_code || contractInfo?.contract_number || resourceId)}:${view}:${currentStepOnServer}`,
+        [contractInfo?.contract_code, contractInfo?.contract_number, contractInfo?.id, currentStepOnServer, resourceId, view]
+    );
+
+    useEffect(() => {
+        if (stepStatus.ekyc) {
+            setEkycSession(null);
+            setEkycInitError("");
+        }
+    }, [stepStatus.ekyc]);
+
+    useEffect(() => {
+        if (view !== "ekyc") {
+            ekycAutoInitKeyRef.current = "";
+        }
+    }, [view]);
 
     const activeStepKey = useMemo(() => {
         if (view === "link-account") return "link-account";
@@ -654,6 +837,35 @@ export const EContractFlow: React.FC = () => {
         }
         return null;
     }, [currentPayment.account_number, paymentUiState, stepStatus.payment]);
+
+    const canContinuePaymentStep = useMemo(() => {
+        if (stepStatus.payment) {
+            return true;
+        }
+
+        const hasCompletedPaymentInfo =
+            Boolean(form.bank_name.trim()) &&
+            Boolean(form.account_name.trim()) &&
+            Boolean(form.account_number.trim()) &&
+            Boolean(form.bank_branch.trim());
+
+        if (!hasCompletedPaymentInfo) {
+            return false;
+        }
+
+        if (!bankVerificationStatus || bankVerificationStatus.tone === "danger") {
+            return false;
+        }
+
+        return true;
+    }, [
+        bankVerificationStatus,
+        form.account_name,
+        form.account_number,
+        form.bank_branch,
+        form.bank_name,
+        stepStatus.payment,
+    ]);
 
     const canNavigateTo = useCallback(
         (target: FlowView) => {
@@ -696,6 +908,8 @@ export const EContractFlow: React.FC = () => {
     );
 
     const openPaymentEditor = useCallback(() => {
+        setBankSearchQuery("");
+        setBankPickerVisible(false);
         const existingBank =
             bankOptions.find(
                 (bank) =>
@@ -819,8 +1033,15 @@ export const EContractFlow: React.FC = () => {
         }
     }, [bankOptions, form.account_name, form.account_number, form.bank_branch, form.bank_name, loadData, openSnackbar, paymentDraft.bank_code, paymentDraft.bank_id, paymentDraft.swift_code, stepStatus.payment]);
 
-    const effectiveTaxCode = useMemo(() => textOf(taxCode) || textOf(getProfile(contractInfo).tax_code) || textOf(getProfile(contractInfo).id_number), [contractInfo, taxCode]);
-    const taxReadonly = Boolean(textOf(getProfile(contractInfo).id_number));
+    const effectiveTaxCode = useMemo(
+        () =>
+            textOf(getProfile(contractInfo).id_number) ||
+            textOf(form.identity_card) ||
+            textOf(getProfile(contractInfo).tax_code) ||
+            textOf(taxCode),
+        [contractInfo, form.identity_card, taxCode]
+    );
+    const taxReadonly = true;
     const taxValid = useMemo(() => {
         const digits = effectiveTaxCode.replace(/\D/g, "");
         return digits.length >= 10 && digits.length <= 15;
@@ -847,6 +1068,212 @@ export const EContractFlow: React.FC = () => {
         }),
         [effectiveTaxCode, form]
     );
+
+    const postInitDataToEkycIframe = useCallback(() => {
+        if (!ekycSession || !ekycIframeRef.current?.contentWindow) {
+            return;
+        }
+
+        ekycIframeRef.current.contentWindow.postMessage(
+            {
+                result: "init_data_iframe",
+                token: ekycSession.token,
+                token_name: ekycSession.tokenName,
+                access_token: ekycSession.accessToken,
+                resource_id: ekycSession.resourceId,
+                config: ekycSession.raw,
+                data: ekycSession.raw,
+            },
+            "*"
+        );
+    }, [ekycSession]);
+
+    const handleInitEkycStep = useCallback(
+        async (force = false) => {
+            if (stepStatus.ekyc || ekycInitLoading || (!force && ekycSession?.url)) {
+                return;
+            }
+
+            setEkycInitLoading(true);
+            setEkycInitError("");
+            if (force) {
+                setEkycSession(null);
+            }
+
+            try {
+                const result = await initEkycSession();
+                const nextUrl = textOf(result.data?.url_ekyc_frame);
+                if (!result.ok || !nextUrl) {
+                    setEkycInitError(result.message);
+                    openSnackbar({ type: "error", text: result.message, duration: 4000 });
+                    return;
+                }
+
+                setEkycSession({
+                    url: nextUrl,
+                    token: textOf(result.data?.token),
+                    tokenName: textOf(result.data?.token_name),
+                    accessToken: textOf(result.data?.access_token),
+                    resourceId: textOf(result.data?.resource_id) || getResourceId(contractInfo, resourceId),
+                    raw: result.data || {},
+                });
+            } finally {
+                setEkycInitLoading(false);
+            }
+        },
+        [contractInfo, ekycInitLoading, ekycSession?.url, openSnackbar, resourceId, stepStatus.ekyc]
+    );
+
+    const handleEkycIframeResult = useCallback(
+        async (messageData: Record<string, unknown>) => {
+            if (stepStatus.ekyc || ekycSaving) {
+                return;
+            }
+
+            const root = asRecord(messageData.data) || asRecord(messageData.payload) || messageData;
+            const nestedRecords = [
+                root,
+                asRecord(root.result),
+                asRecord(root.data),
+                asRecord(root.ocr_result),
+                asRecord(root.liveness_result),
+                asRecord(root.compare_img_result),
+            ];
+
+            const frontImageValue =
+                findFirstText(nestedRecords, ["front_image", "image_before_card", "before_image"]) ||
+                findFirstBase64ByKeys(root, ["front", "before"]);
+            const backImageValue =
+                findFirstText(nestedRecords, ["back_image", "image_after_card", "after_image"]) ||
+                findFirstBase64ByKeys(root, ["back", "after"]);
+
+            let frontImage = textOf(frontImageValue);
+            let backImage = textOf(backImageValue);
+
+            if (isBase64Image(frontImage) && isBase64Image(backImage)) {
+                const frontFile = normalizeBase64Image(frontImage);
+                const backFile = normalizeBase64Image(backImage);
+                const uploadResult = await uploadBase64Files([
+                    {
+                        data: frontFile.data,
+                        filename: `ekyc-front-${Date.now()}.jpg`,
+                        mime_type: frontFile.mimeType,
+                    },
+                    {
+                        data: backFile.data,
+                        filename: `ekyc-back-${Date.now()}.jpg`,
+                        mime_type: backFile.mimeType,
+                    },
+                ]);
+
+                if (!uploadResult.ok || uploadResult.uploadedFiles.length < 2) {
+                    openSnackbar({ type: "error", text: uploadResult.message, duration: 4000 });
+                    return;
+                }
+
+                [frontImage, backImage] = uploadResult.uploadedFiles;
+            }
+
+            const identityCard = findFirstText(nestedRecords, ["identity_card", "id_number", "id_no", "document_number"]);
+            const nextName = findFirstText(nestedRecords, ["name", "full_name", "fullname", "fullName"]);
+            const nextDob = normalizeDateForContract(findFirstText(nestedRecords, ["date_of_birth", "dob", "birth_day", "birthday"]));
+            const nextIssueDate = normalizeDateForContract(findFirstText(nestedRecords, ["issue_date", "id_issue_date", "date_of_issue"]));
+            const nextIssuePlace = findFirstText(nestedRecords, ["issue_place", "id_issue_place", "place_of_issue"]);
+            const nextAddress = findFirstText(nestedRecords, ["permanent_address", "address", "full_address", "resident_address"]);
+            const nextCountry = countryToApiCode(findFirstText(nestedRecords, ["country", "nationality"]) || form.country);
+            const nextOrigin = findFirstText(nestedRecords, ["origin", "place_of_origin"]);
+            const nextGender = normalizeGender(findFirstText(nestedRecords, ["gender", "sex"]));
+
+            const nextForm = {
+                email: form.email.trim(),
+                phone: form.phone.trim(),
+                name: nextName || form.name.trim(),
+                permanent_address: nextAddress || form.permanent_address.trim(),
+                date_of_birth: nextDob || formatContractDate(form.date_of_birth),
+                identity_card: identityCard || form.identity_card.trim(),
+                issue_place: nextIssuePlace || form.issue_place.trim(),
+                issue_date: nextIssueDate || formatContractDate(form.issue_date),
+                country: nextCountry || form.country,
+                account_name: form.account_name.trim(),
+                account_number: form.account_number.trim(),
+                bank_name: form.bank_name.trim(),
+                bank_branch: form.bank_branch.trim(),
+                front_image: frontImage || form.front_image,
+                back_image: backImage || form.back_image,
+            };
+
+            const resource = ekycSession?.resourceId || getResourceId(contractInfo, resourceId);
+            if (!resource) {
+                openSnackbar({ type: "error", text: "Thiếu resource_id của hợp đồng.", duration: 3000 });
+                return;
+            }
+
+            const payload = {
+                step: 2,
+                is_ekyc: true,
+                resource_id: resource,
+                contract_info: {
+                    ...buildContractInfoPayload(nextForm),
+                    gender: nextGender || undefined,
+                    origin: nextOrigin || undefined,
+                    token: ekycSession?.token || "",
+                    token_name: ekycSession?.tokenName || "",
+                    reason: "",
+                },
+            };
+
+            setEkycSaving(true);
+            try {
+                const result = await saveEkycContractStep(payload);
+                if (!result.ok) {
+                    openSnackbar({ type: "error", text: result.message, duration: 4000 });
+                    return;
+                }
+
+                setForm((prev) => ({
+                    ...prev,
+                    ...nextForm,
+                }));
+                setTaxCode(nextForm.identity_card);
+                setEkycSession(null);
+                setEkycInitError("");
+                openSnackbar({ type: "success", text: "Đã lưu thông tin EKYC.", duration: 3000 });
+                await loadData(true);
+            } finally {
+                setEkycSaving(false);
+            }
+        },
+        [buildContractInfoPayload, contractInfo, ekycSaving, ekycSession, form, loadData, openSnackbar, resourceId, stepStatus.ekyc]
+    );
+
+    const handleSaveEkycStep = useCallback(async () => {
+        if (stepStatus.ekyc) {
+            setView("tax");
+            return;
+        }
+
+        if (ekycInitError || !ekycSession?.url) {
+            await handleInitEkycStep(true);
+            return;
+        }
+
+        openSnackbar({
+            type: "info",
+            text: "Vui lòng hoàn tất eKYC trong khung xác thực để tiếp tục.",
+            duration: 3000,
+        });
+    }, [ekycInitError, ekycSession?.url, handleInitEkycStep, openSnackbar, stepStatus.ekyc]);
+
+    useEffect(() => {
+        if (view !== "ekyc" || stepStatus.ekyc || currentStepOnServer < 1 || ekycSession?.url || ekycInitLoading) {
+            return;
+        }
+        if (ekycAutoInitKeyRef.current === ekycAutoInitKey) {
+            return;
+        }
+        ekycAutoInitKeyRef.current = ekycAutoInitKey;
+        void handleInitEkycStep();
+    }, [currentStepOnServer, ekycAutoInitKey, ekycInitLoading, ekycSession?.url, handleInitEkycStep, stepStatus.ekyc, view]);
 
     const handleSaveTaxStep = useCallback(async () => {
         if (stepStatus.tax) {
@@ -1027,6 +1454,37 @@ export const EContractFlow: React.FC = () => {
         }
     }, [contractInfo?.contract_status, isLinkedAccount, linkStepSuccess, resignFlowStarted, showLinkAccountStep, view]);
 
+    useEffect(() => {
+        const handleWindowMessage = (event: MessageEvent) => {
+            const payload = parseMessagePayload(event.data);
+            if (!payload) {
+                return;
+            }
+
+            const result = textOf(payload.result || payload.event || payload.type || payload.action);
+            if (!result) {
+                return;
+            }
+
+            if (result === "eContractIframe") {
+                postInitDataToEkycIframe();
+                return;
+            }
+
+            if (result === "goBack") {
+                handleBack();
+                return;
+            }
+
+            if (result === "ekyc_results") {
+                void handleEkycIframeResult(payload);
+            }
+        };
+
+        window.addEventListener("message", handleWindowMessage);
+        return () => window.removeEventListener("message", handleWindowMessage);
+    }, [handleBack, handleEkycIframeResult, postInitDataToEkycIframe]);
+
     const renderProgress = () => {
         const dots = [1, 2, 3, 4, 5];
         return (
@@ -1098,7 +1556,9 @@ export const EContractFlow: React.FC = () => {
                         <Text size="small" bold className="ec-form-label">Thẻ ngân hàng</Text>
                         <div className="ec-bank-mini-card">
                             <div className="ec-bank-mini-card__head">
-                                <span className="ec-bank-mini-card__bank">{form.bank_name || "—"}</span>
+                                <span className="ec-bank-mini-card__bank">
+                                    {getBankShortLabel(bankOptions, currentPayment.bank_code, form.bank_name) || "—"}
+                                </span>
                                 <span className="ec-bank-mini-card__owner">{form.account_name || "—"}</span>
                             </div>
                             <div className="ec-bank-mini-card__number">
@@ -1134,7 +1594,7 @@ export const EContractFlow: React.FC = () => {
                 <div className="ec-actions-bottom">
                     <Button
                         className="ec-btn-primary"
-                        disabled={!bankVerificationStatus}
+                        disabled={!canContinuePaymentStep}
                         loading={paymentSaving}
                         onClick={() => void handleSavePaymentStep()}
                     >
@@ -1148,15 +1608,64 @@ export const EContractFlow: React.FC = () => {
     const renderEkycStep = () => {
         return (
             <div className="ec-card ec-contract-card">
-                <div className="ec-iframe-placeholder">
-                    <div className="ec-iframe-placeholder__inner">FPT E-Contract</div>
+                <div className="ec-tax-panel">
+                    <Text bold className="ec-section-title">Xác thực định danh</Text>
+                    <Text size="small" className="ec-muted">
+                        {stepStatus.ekyc
+                            ? "Thông tin EKYC đã được lưu. Kiểm tra lại trước khi sang bước tiếp theo."
+                            : "Hệ thống sẽ mở phiên eKYC đúng theo luồng website. Sau khi hoàn tất, bước tiếp theo sẽ được mở tự động."}
+                    </Text>
+
+                    {stepStatus.ekyc ? (
+                        <div className="ec-grid ec-grid--2" style={{ marginTop: 16 }}>
+                            <FieldRo label="Họ và tên" value={form.name || "—"} />
+                            <FieldRo label="Số CCCD" value={form.identity_card || "—"} />
+                            <FieldRo label="Ngày sinh" value={formatContractDate(form.date_of_birth) || "—"} />
+                            <FieldRo label="Ngày cấp CCCD" value={formatContractDate(form.issue_date) || "—"} />
+                            <FieldRo label="Nơi cấp CCCD" value={form.issue_place || "—"} />
+                            <FieldRo label="Địa chỉ thường trú" value={form.permanent_address || "—"} />
+                            <FieldRo label="Số điện thoại OTP" value={form.phone || "—"} />
+                            <FieldRo label="Email" value={form.email || "—"} />
+                        </div>
+                    ) : ekycInitLoading ? (
+                        <div className="ec-iframe-placeholder">
+                            <div className="ec-iframe-placeholder__inner">Đang khởi tạo phiên EKYC...</div>
+                        </div>
+                    ) : ekycSession?.url ? (
+                        <div className="ec-iframe-placeholder">
+                            <div className="ec-ekyc-frame">
+                                <iframe
+                                    ref={ekycIframeRef}
+                                    src={ekycSession.url}
+                                    title="EKYC"
+                                    allow="camera; microphone"
+                                    className="ec-ekyc-frame__iframe"
+                                    onLoad={postInitDataToEkycIframe}
+                                />
+                            </div>
+                            <Text size="xSmall" className="ec-form-note" style={{ marginTop: 10 }}>
+                                Hoàn tất xác thực trong khung bên trên. Hệ thống sẽ tự lưu kết quả và chuyển sang bước tiếp theo.
+                            </Text>
+                        </div>
+                    ) : (
+                        <div className="ec-iframe-placeholder">
+                            <div className="ec-iframe-placeholder__inner">
+                                {ekycInitError || "Chưa khởi tạo được phiên EKYC."}
+                            </div>
+                        </div>
+                    )}
                 </div>
                 <div className="ec-actions-row">
                     <Button variant="secondary" className="ec-btn-gray" onClick={handleBack}>
                         Quay lại
                     </Button>
-                    <Button className="ec-btn-primary" onClick={() => setView("tax")}>
-                        Tiếp tục
+                    <Button
+                        className="ec-btn-primary"
+                        loading={ekycInitLoading || ekycSaving || submitting}
+                        disabled={!stepStatus.ekyc && !ekycInitError}
+                        onClick={() => void handleSaveEkycStep()}
+                    >
+                        {stepStatus.ekyc ? "Tiếp tục" : ekycInitError ? "Thử lại" : "Đang chờ xác thực"}
                     </Button>
                 </div>
             </div>
@@ -1178,10 +1687,9 @@ export const EContractFlow: React.FC = () => {
                         value={effectiveTaxCode}
                         disabled={taxReadonly}
                         readOnly={taxReadonly}
-                        onChange={(event) => setTaxCode(event.target.value)}
                     />
                     <Text size="xSmall" className="ec-form-note">
-                        Mã số thuế cá nhân thường có 10-15 chữ số
+                        Mã số thuế được tự động lấy từ số CCCD sau khi EKYC.
                     </Text>
                 </div>
             </div>
@@ -1446,37 +1954,42 @@ export const EContractFlow: React.FC = () => {
 
             <Modal
                 visible={paymentModalVisible}
-                title="Thông tin tài khoản"
+                title=""
                 onClose={() => setPaymentModalVisible(false)}
                 width="92%"
                 maskClosable={!paymentEditing}
                 className="ec-modal"
             >
                 <div className="ec-modal-body">
-                    <div className="ec-field-stack">
-                        <Select
-                            label="Ngân hàng"
-                            placeholder="Chọn ngân hàng"
-                            value={paymentDraft.bank_code}
-                            closeOnSelect
-                            onChange={(value) => {
-                                const bankCode = String(Array.isArray(value) ? value[0] : value || "");
-                                const bank = bankOptions.find((item) => item.bank_code === bankCode);
-                                setPaymentDraft((prev) => ({
-                                    ...prev,
-                                    bank_code: bankCode,
-                                    bank_name: bank?.bank_name_vi || "",
-                                    swift_code: bank?.swift_code || "",
-                                    bank_id: textOf(bank?.id),
-                                }));
-                            }}
+                    <div className="ec-modal-header">
+                        <Text.Title size="small" className="ec-modal-header__title">
+                            Thông tin tài khoản
+                        </Text.Title>
+                        <button
+                            type="button"
+                            className="ec-modal-header__close"
+                            aria-label="Đóng"
+                            onClick={() => setPaymentModalVisible(false)}
                         >
-                            {bankOptions.map((bank) => (
-                                <Select.Option key={bank.bank_code} value={bank.bank_code} title={bank.display_name || bank.bank_name_vi}>
-                                    {bank.display_name || bank.bank_name_vi}
-                                </Select.Option>
-                            ))}
-                        </Select>
+                            <Icon icon="zi-close" size={20} />
+                        </button>
+                    </div>
+                    <div className="ec-field-stack">
+                        <Text size="small" bold style={{
+                            marginBottom: 4
+                        }}>
+                            Ngân hàng
+                        </Text>
+                        <button
+                            type="button"
+                            className="ec-bank-picker-trigger"
+                            onClick={() => setBankPickerVisible(true)}
+                        >
+                            <span className={paymentDraft.bank_name ? "ec-bank-picker-trigger__value" : "ec-bank-picker-trigger__placeholder"}>
+                                {getBankShortLabel(bankOptions, paymentDraft.bank_code, paymentDraft.bank_name) || "Chọn ngân hàng"}
+                            </span>
+                            <Icon icon="zi-chevron-down" size={18} />
+                        </button>
                     </div>
                     <div className="ec-field-stack">
                         <Text size="small" bold>
@@ -1506,12 +2019,74 @@ export const EContractFlow: React.FC = () => {
                         />
                     </div>
                     <div className="ec-modal-actions">
-                        <Button variant="secondary" fullWidth onClick={() => setPaymentModalVisible(false)}>
-                            Hủy
-                        </Button>
                         <Button fullWidth className="ec-btn-primary" loading={paymentEditing} onClick={() => void handleVerifyPayment()}>
                             Lưu thông tin
                         </Button>
+                    </div>
+                </div>
+            </Modal>
+
+            <Modal
+                visible={bankPickerVisible}
+                title=""
+                onClose={() => setBankPickerVisible(false)}
+                width="92%"
+                className="ec-modal"
+            >
+                <div className="ec-modal-body">
+                    <div className="ec-modal-header">
+                        <Text.Title size="small" className="ec-modal-header__title">
+                            Chọn ngân hàng
+                        </Text.Title>
+                        <button
+                            type="button"
+                            className="ec-modal-header__close"
+                            aria-label="Đóng"
+                            onClick={() => setBankPickerVisible(false)}
+                        >
+                            <Icon icon="zi-close" size={20} />
+                        </button>
+                    </div>
+
+                    <div className="ec-field-stack">
+                        <Text size="small" bold>
+                            Tìm ngân hàng
+                        </Text>
+                        <Input
+                            value={bankSearchQuery}
+                            placeholder="Nhập tên hoặc mã ngân hàng"
+                            onChange={(event) => setBankSearchQuery(event.target.value)}
+                        />
+                    </div>
+
+                    <div className="ec-bank-picker-list">
+                        {filteredBankOptions.length > 0 ? (
+                            filteredBankOptions.map((bank) => {
+                                const isSelected = paymentDraft.bank_code === bank.bank_code;
+                                return (
+                                    <button
+                                        key={bank.bank_code}
+                                        type="button"
+                                        className={`ec-bank-picker-item${isSelected ? " is-selected" : ""}`}
+                                        onClick={() => {
+                                            setPaymentDraft((prev) => ({
+                                                ...prev,
+                                                bank_code: bank.bank_code,
+                                                bank_name: bank.bank_name_vi || "",
+                                                swift_code: bank.swift_code || "",
+                                                bank_id: textOf(bank.id),
+                                            }));
+                                            setBankPickerVisible(false);
+                                        }}
+                                    >
+                                        <span>{bank.display_name || bank.bank_name_vi}</span>
+                                        {isSelected ? <Icon icon="zi-check" size={18} /> : null}
+                                    </button>
+                                );
+                            })
+                        ) : (
+                            <div className="ec-bank-picker-empty">Không tìm thấy ngân hàng phù hợp.</div>
+                        )}
                     </div>
                 </div>
             </Modal>

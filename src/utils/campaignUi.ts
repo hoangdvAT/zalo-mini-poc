@@ -243,12 +243,12 @@ export function getCampaignTypeBadge(c: Campaign): string {
     return "ADS";
 }
 
-/** Giá trị hiển thị sau chữ "Hoa hồng" */
+/** Giá trị hiển thị sau chữ "Hoa hồng" — ưu tiên value (đ) trước, sau đó rate (%) */
 export function getCampaignCommissionDisplay(c: Campaign): string {
     const rate = parseFloat(c.max_commission_rate) || 0;
     const value = parseFloat(c.max_commission_value) || 0;
-    if (rate > 0) return `${rate}%`;
     if (value > 0) return `${formatNumber(value)} đ`;
+    if (rate > 0) return `${rate}%`;
     return "";
 }
 

@@ -116,7 +116,7 @@ export async function applyJoinCampaignResponse(
   /** Các trường hợp còn lại (success / không có `status` / HTTP 200) — giống nhánh `else` trên portal. */
   openSnackbar({
     type: "success",
-    text: "Bạn đã tham gia chiến dịch thành công.",
+    text: "Tham gia chiến dịch thành công",
     duration: 3500,
   });
   await Promise.resolve(onSuccess?.());

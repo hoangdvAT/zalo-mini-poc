@@ -91,27 +91,48 @@ const JobDetailPage: React.FC = () => {
         if (!id) return;
         setLoading(true);
         fetchCampaignById(id)
-            .then((data) => { setCampaign(data); setLoading(false); })
+            .then((data) => {
+                if (data) {
+                    // Merge: giữ lại total/active/pending từ list nếu API detail không trả về
+                    setCampaign((prev) => {
+                        if (!prev || prev.id !== data.id) return data;
+                        return {
+                            ...data,
+                            total: data.total ?? prev.total,
+                            active: data.active ?? prev.active,
+                            pending: data.pending ?? prev.pending,
+                        } as typeof data;
+                    });
+                } else {
+                    setCampaign(data);
+                }
+                setLoading(false);
+            })
             .catch(() => setLoading(false));
     }, [id, setCampaign]);
 
-    /** CTA giống list; nếu GET campaign/:id thiếu total/active/pending thì gọi 1 lần contracts/campaign. */
+    /** CTA: luôn gọi contracts/campaign để xác định chính xác (API list total/active/pending không đáng tin). */
     useEffect(() => {
         if (!campaign || isGuest || !token) return;
-
-        if (campaignPayloadHasCtaHint(campaign)) {
-            setCtaMode(resolveCtaModeFromCampaignListItem(campaign));
-            setCtaLoading(false);
-            return;
-        }
 
         setCtaLoading(true);
         fetchContractsByCampaign(campaign.id)
             .then((res) => {
-                setCtaMode(resolveContractCtaMode(res.contract || []));
+                const contracts = res.contract || [];
+                if (contracts.length > 0) {
+                    setCtaMode(resolveContractCtaMode(contracts));
+                } else if (campaignPayloadHasCtaHint(campaign)) {
+                    setCtaMode(resolveCtaModeFromCampaignListItem(campaign));
+                } else {
+                    setCtaMode("join");
+                }
             })
             .catch(() => {
-                setCtaMode(resolveCtaModeFromCampaignListItem(campaign));
+                if (campaignPayloadHasCtaHint(campaign)) {
+                    setCtaMode(resolveCtaModeFromCampaignListItem(campaign));
+                } else {
+                    setCtaMode("join");
+                }
             })
             .finally(() => setCtaLoading(false));
     }, [campaign, isGuest, token]);

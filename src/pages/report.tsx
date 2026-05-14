@@ -8,11 +8,10 @@ import {
     fetchConversions,
     fetchCampaignsWithContract,
     fetchReportOverview,
-    fetchConversionDetail,
-    fetchCampaignById,
     type PublisherConversionListMeta,
 } from "@/services/api";
 import { DataCard } from "@/components/display";
+import { ConversionDetailSheet } from "@/components/display/ConversionDetailSheet";
 import { BodyPortal, BODY_OVERLAY_Z_INDEX, CUSTOM_DATE_RANGE_BODY_CLASS } from "@/components/base";
 import { formatNumber, formatDateTime } from "@/utils/format";
 import {
@@ -50,6 +49,7 @@ const ReportPage: React.FC = () => {
     const [conversions, setConversions] = useAtom(conversionsAtom);
     const [loading, setLoading] = useAtom(loadingReportAtom);
     const [convMeta, setConvMeta] = useState<PublisherConversionListMeta>({});
+    const [overview, setOverview] = useState<any>(null);
     const [convPage, setConvPage] = useState(1);
     const pageSize = 20;
     const { isAuthenticated } = useAuth();
@@ -67,6 +67,7 @@ const ReportPage: React.FC = () => {
 
     // Filter values
     const [filterOrderId, setFilterOrderId] = useState("");
+    const [orderIdInput, setOrderIdInput] = useState("");
     const [filterCampaign, setFilterCampaign] = useState<string | number>("");
     const [filterCampaignName, setFilterCampaignName] = useState("");
     const [filterUtmParam, setFilterUtmParam] = useState("");
@@ -90,39 +91,6 @@ const ReportPage: React.FC = () => {
 
     // Selected conversion for detail modal
     const [selectedConversion, setSelectedConversion] = useState<any>(null);
-    const [isDetailLoading, setIsDetailLoading] = useState(false);
-    const [expandedUtm, setExpandedUtm] = useState(false);
-    const [expandedSub, setExpandedSub] = useState(false);
-
-    const handleConversionClick = async (conv: any) => {
-        setSelectedConversion(conv); // show list data temporarily
-        setIsDetailLoading(true);
-        setExpandedUtm(false);
-        setExpandedSub(false);
-        try {
-            const detailRes = await fetchConversionDetail(conv.conversion_id || conv.id);
-            let merged = { ...conv };
-            if (detailRes) {
-                // If detailRes is wrapped in { conversion: ... } or is the object itself
-                const detailData = detailRes.conversion ? detailRes.conversion : detailRes;
-                merged = { ...merged, ...detailData };
-            }
-
-            // Fetch campaign to get campaign_name if not available
-            if (merged.campaign_id && (!merged.click_detail?.campaign_name && !merged.cal_commission?.campaign_name && !merged.campaign_name)) {
-                const campaignRes = await fetchCampaignById(merged.campaign_id);
-                if (campaignRes && campaignRes.name) {
-                    merged.campaign_name = campaignRes.name;
-                }
-            }
-
-            setSelectedConversion(merged);
-        } catch (e) {
-            console.error("Lỗi tải chi tiết đơn hàng", e);
-        } finally {
-            setIsDetailLoading(false);
-        }
-    };
 
     // Campaign Search & List
     const [campaignList, setCampaignList] = useState<any[]>([]);
@@ -221,8 +189,14 @@ const ReportPage: React.FC = () => {
                 sub_param: filterSubParam ? filterSubParam : undefined,
                 sub_value: filterSubValue ? filterSubValue : undefined,
             });
+            const overviewData = await fetchReportOverview({
+                from_date,
+                to_date,
+                campaigns: filterCampaign ? [filterCampaign] : undefined,
+            });
             setConvMeta(convData.meta || {});
             setConversions(convData.items);
+            setOverview(overviewData);
         } catch (err) {
             console.error("Lỗi tải báo cáo:", err);
         } finally {
@@ -258,19 +232,17 @@ const ReportPage: React.FC = () => {
 
     return (
         <Page className="report-page" hideScrollbar>
-            {/* Header */}
             <div className="report-header">
-                <Text.Title size="large" className="report-header__title">
-                    Báo cáo
-                </Text.Title>
+                <div className="report-header__top">
+                    <Text.Title className="report-header__title">Báo cáo</Text.Title>
+                </div>
             </div>
 
-            {/* Filters (Mock UI) */}
             <div className="report-filters">
                 <div className={`report-filter-btn ${filterTimeLabel ? 'active' : ''}`} onClick={() => setTimeSheetVisible(true)}>
                     <span className="report-filter-btn-text">{filterTimeLabel || "Thời gian"}</span>
                     {filterTimeLabel ? (
-                        <div onClick={(e) => { e.stopPropagation(); setFilterTimeLabel(""); }} style={{ display: 'flex', alignItems: 'center' }}>
+                        <div onClick={(e) => { e.stopPropagation(); setFilterTimeLabel(""); setConvPage(1); }} style={{ display: 'flex', alignItems: 'center' }}>
                             <Icon icon="zi-close-circle" size={16} style={{ marginLeft: 4, color: '#FF5A00' }} />
                         </div>
                     ) : (
@@ -280,37 +252,27 @@ const ReportPage: React.FC = () => {
                 <div className={`report-filter-btn ${filterCampaign ? 'active' : ''}`} onClick={() => setCampaignSheetVisible(true)}>
                     <span className="report-filter-btn-text">{filterCampaignName || "Chương trình"}</span>
                     {filterCampaign ? (
-                        <div onClick={(e) => { e.stopPropagation(); setFilterCampaign(""); setFilterCampaignName(""); }} style={{ display: 'flex', alignItems: 'center' }}>
+                        <div onClick={(e) => { e.stopPropagation(); setFilterCampaign(""); setFilterCampaignName(""); setConvPage(1); }} style={{ display: 'flex', alignItems: 'center' }}>
                             <Icon icon="zi-close-circle" size={16} style={{ marginLeft: 4, color: '#FF5A00' }} />
                         </div>
                     ) : (
                         <Icon icon="zi-chevron-down" size={16} />
                     )}
                 </div>
-                <div className={`report-filter-btn ${filterStatus ? 'active' : ''}`} onClick={() => setStatusSheetVisible(true)}>
-                    <span className="report-filter-btn-text">{filterStatus ? statusMap[filterStatus] : "Trạng thái"}</span>
-                    {filterStatus ? (
-                        <div onClick={(e) => { e.stopPropagation(); setFilterStatus(""); }} style={{ display: 'flex', alignItems: 'center' }}>
+                <div className={`report-filter-btn ${filterUtmParam ? 'active' : ''}`} onClick={() => setUtmSheetVisible(true)}>
+                    <span className="report-filter-btn-text">{filterUtmParam ? `${filterUtmParam}: ${filterUtmValue}` : "Nguồn UTM"}</span>
+                    {filterUtmParam ? (
+                        <div onClick={(e) => { e.stopPropagation(); setFilterUtmParam(""); setFilterUtmValue(""); setConvPage(1); }} style={{ display: 'flex', alignItems: 'center' }}>
                             <Icon icon="zi-close-circle" size={16} style={{ marginLeft: 4, color: '#FF5A00' }} />
                         </div>
                     ) : (
                         <Icon icon="zi-chevron-down" size={16} />
                     )}
                 </div>
-                <div className={`report-filter-btn ${filterUtmValue ? 'active' : ''}`} onClick={() => setUtmSheetVisible(true)}>
-                    <span className="report-filter-btn-text">{filterUtmValue ? `${filterUtmParam}: ${filterUtmValue}` : "UTM"}</span>
-                    {filterUtmValue ? (
-                        <div onClick={(e) => { e.stopPropagation(); setFilterUtmValue(""); setFilterUtmParam(""); }} style={{ display: 'flex', alignItems: 'center' }}>
-                            <Icon icon="zi-close-circle" size={16} style={{ marginLeft: 4, color: '#FF5A00' }} />
-                        </div>
-                    ) : (
-                        <Icon icon="zi-chevron-down" size={16} />
-                    )}
-                </div>
-                <div className={`report-filter-btn ${filterSubValue ? 'active' : ''}`} onClick={() => setSubSheetVisible(true)}>
-                    <span className="report-filter-btn-text">{filterSubValue ? `${filterSubParam}: ${filterSubValue}` : "Sub"}</span>
-                    {filterSubValue ? (
-                        <div onClick={(e) => { e.stopPropagation(); setFilterSubValue(""); setFilterSubParam(""); }} style={{ display: 'flex', alignItems: 'center' }}>
+                <div className={`report-filter-btn ${filterSubParam ? 'active' : ''}`} onClick={() => setSubSheetVisible(true)}>
+                    <span className="report-filter-btn-text">{filterSubParam ? `${filterSubParam}: ${filterSubValue}` : "Nguồn Sub"}</span>
+                    {filterSubParam ? (
+                        <div onClick={(e) => { e.stopPropagation(); setFilterSubParam(""); setFilterSubValue(""); setConvPage(1); }} style={{ display: 'flex', alignItems: 'center' }}>
                             <Icon icon="zi-close-circle" size={16} style={{ marginLeft: 4, color: '#FF5A00' }} />
                         </div>
                     ) : (
@@ -328,66 +290,160 @@ const ReportPage: React.FC = () => {
                     </div>
                 ) : (
                     <>
-                        {/* Data Sections */}
-                        {/* 4 ô thống kê cùng nguồn meta danh sách đơn — giống v2/report index (web) */}
-                        <div className="report-overview-section">
+                        {/* <div className="report-overview-section">
                             <div className="report-overview-card">
                                 <div className="report-overview-card__header">
                                     <Icon icon="zi-inbox" className="report-overview-card__icon" />
-                                    <Text size="normal" bold>Tổng đơn hàng</Text>
+                                    <Text size="normal" bold>Giá trị đơn hàng</Text>
                                 </div>
                                 <div className="report-overview-card__row">
-                                    <span className="report-overview-card__value" style={{ fontSize: 22 }}>
-                                        {formatNumber(convMeta.total ?? 0)}
+                                    <span className="report-overview-card__label">Tổng: (20%)</span>
+                                    <span className="report-overview-card__value">
+                                        {formatNumber(overview?.sale_amount?.total ?? convMeta.total_sale_amount ?? 0)}
+                                    </span>
+                                </div>
+                                <div className="report-overview-card__row">
+                                    <span className="report-overview-card__label">Tổng:</span>
+                                    <span className="report-overview-card__value">
+                                        {formatNumber(overview?.sale_amount?.total ?? convMeta.total_sale_amount ?? 0)}
+                                    </span>
+                                </div>
+                                <div className="report-overview-card__row">
+                                    <span className="report-overview-card__label">Đã duyệt:</span>
+                                    <span className="report-overview-card__value report-overview-card__value--success">
+                                        {formatNumber((overview?.sale_amount?.approved ?? 0) + (overview?.sale_amount?.pre_approved ?? 0))}
                                     </span>
                                 </div>
                             </div>
                             <div className="report-overview-card">
                                 <div className="report-overview-card__header">
                                     <Icon icon="zi-star" className="report-overview-card__icon" />
-                                    <Text size="normal" bold>Tổng giá trị đơn</Text>
+                                    <Text size="normal" bold>Hoa hồng</Text>
                                 </div>
                                 <div className="report-overview-card__row">
-                                    <span className="report-overview-card__value" style={{ fontSize: 22 }}>
-                                        {formatNumber(convMeta.total_sale_amount ?? 0)}
+                                    <span className="report-overview-card__label">Tổng:</span>
+                                    <span className="report-overview-card__value">
+                                        {formatNumber(overview?.pub_commission?.total ?? convMeta.total_pub_commission ?? 0)}
+                                    </span>
+                                </div>
+                                <div className="report-overview-card__row">
+                                    <span className="report-overview-card__label">Đã duyệt:</span>
+                                    <span className="report-overview-card__value report-overview-card__value--success">
+                                        {formatNumber((overview?.pub_commission?.approved ?? 0) + (overview?.pub_commission?.pre_approved ?? 0))}
                                     </span>
                                 </div>
                             </div>
                             <div className="report-overview-card">
                                 <div className="report-overview-card__header">
-                                    <Icon icon="zi-auto-solid" className="report-overview-card__icon" />
-                                    <Text size="normal" bold>Tổng số lượng</Text>
+                                    <Icon icon="zi-refresh" className="report-overview-card__icon" />
+                                    <Text size="normal" bold>Chuyển đổi</Text>
                                 </div>
                                 <div className="report-overview-card__row">
-                                    <span className="report-overview-card__value" style={{ fontSize: 22 }}>
-                                        {formatNumber(convMeta.total_conversion_part_quantity ?? 0)}
+                                    <span className="report-overview-card__label">Tổng:</span>
+                                    <span className="report-overview-card__value">
+                                        {formatNumber(overview?.conversion?.total ?? convMeta.total_conversion_part_quantity ?? 0)}
+                                    </span>
+                                </div>
+                                <div className="report-overview-card__row">
+                                    <span className="report-overview-card__label">Đã duyệt:</span>
+                                    <span className="report-overview-card__value report-overview-card__value--success">
+                                        {formatNumber((overview?.conversion?.approved ?? 0) + (overview?.conversion?.pre_approved ?? 0))}
                                     </span>
                                 </div>
                             </div>
                             <div className="report-overview-card">
                                 <div className="report-overview-card__header">
                                     <Icon icon="zi-more-grid" className="report-overview-card__icon" />
-                                    <Text size="normal" bold>Tổng hoa hồng</Text>
+                                    <Text size="normal" bold>Khác</Text>
                                 </div>
                                 <div className="report-overview-card__row">
-                                    <span className="report-overview-card__value" style={{ fontSize: 22 }}>
-                                        {formatNumber(convMeta.total_pub_commission ?? 0)} đ
+                                    <span className="report-overview-card__label">CLICK:</span>
+                                    <span className="report-overview-card__value">
+                                        {formatNumber(overview?.click ?? 0)}
+                                    </span>
+                                </div>
+                                <div className="report-overview-card__row">
+                                    <span className="report-overview-card__label">EPC:</span>
+                                    <span className="report-overview-card__value">
+                                        {formatNumber(overview?.epc ?? 0)}
                                     </span>
                                 </div>
                             </div>
-                        </div>
+                        </div> */}
 
-                        {/* Danh sách đơn — card (mobile): tránh bảng ngang quá rộng chồng cột; UTM xem trong chi tiết */}
                         <div className="report-list-section">
-                            <Text size="large" bold style={{ padding: "16px 16px 8px 16px" }}>
-                                Danh sách đơn hàng
-                            </Text>
+                            <Text size="large" bold className="report-list-section__title">Danh sách đơn hàng</Text>
+
+                            <div className="report-list-stats">
+                                <div className="report-list-stats__item">
+                                    <span className="report-list-stats__label">Tổng đơn hàng</span>
+                                    <span className="report-list-stats__value">{formatNumber(convMeta?.total ?? 0)}</span>
+                                </div>
+                                <div className="report-list-stats__item">
+                                    <span className="report-list-stats__label">Tổng giá trị</span>
+                                    <span className="report-list-stats__value">{formatNumber(convMeta?.total_sale_amount ?? 0)} đ</span>
+                                </div>
+                                <div className="report-list-stats__item">
+                                    <span className="report-list-stats__label">Tổng số lượng</span>
+                                    <span className="report-list-stats__value">{formatNumber(convMeta?.total_conversion_part_quantity ?? 0)}</span>
+                                </div>
+                                <div className="report-list-stats__item">
+                                    <span className="report-list-stats__label">Tổng hoa hồng</span>
+                                    <span className="report-list-stats__value report-list-stats__value--highlight">{formatNumber(convMeta?.total_pub_commission ?? 0)} đ</span>
+                                </div>
+                            </div>
+
+                            <div className="report-list-filters">
+                                <div className="report-search-box">
+                                    <Icon icon="zi-search" className="report-search-icon" />
+                                    <input
+                                        type="text"
+                                        placeholder="Tìm mã đơn hàng..."
+                                        value={orderIdInput}
+                                        onChange={(e) => setOrderIdInput(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                setFilterOrderId(orderIdInput);
+                                            }
+                                        }}
+                                        className="report-search-input"
+                                    />
+                                    {orderIdInput && (
+                                        <div className="report-search-clear" onClick={() => { setOrderIdInput(""); setFilterOrderId(""); }}>
+                                            <Icon icon="zi-close-circle-solid" size={16} />
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="report-quick-status">
+                                    <div
+                                        className={`report-quick-status__item ${!filterStatus ? 'active' : ''}`}
+                                        onClick={() => setFilterStatus('')}
+                                    >Tất cả</div>
+                                    <div
+                                        className={`report-quick-status__item ${filterStatus === 'pending' ? 'active' : ''}`}
+                                        onClick={() => setFilterStatus('pending')}
+                                    >Đang chờ</div>
+                                    <div
+                                        className={`report-quick-status__item ${filterStatus === 'pre_approved' ? 'active' : ''}`}
+                                        onClick={() => setFilterStatus('pre_approved')}
+                                    >Tạm duyệt</div>
+                                    <div
+                                        className={`report-quick-status__item ${filterStatus === 'approved' ? 'active' : ''}`}
+                                        onClick={() => setFilterStatus('approved')}
+                                    >Đã duyệt</div>
+                                    <div
+                                        className={`report-quick-status__item ${filterStatus === 'rejected' ? 'active' : ''}`}
+                                        onClick={() => setFilterStatus('rejected')}
+                                    >Từ chối</div>
+                                </div>
+                            </div>
+
                             {conversions.length === 0 ? (
                                 <div className="empty-state" style={{ padding: 16 }}>
                                     <Text size="small">Chưa có đơn hàng nào</Text>
                                 </div>
                             ) : (
-                                <div className="report-order-list">
+                                <div className="conversion-list">
                                     {conversions.map((conv, i) => {
                                         let statusText = conv.status;
                                         let statusClass = "pending";
@@ -398,7 +454,7 @@ const ReportPage: React.FC = () => {
                                             statusText = "Đã duyệt";
                                             statusClass = "approved";
                                         } else if (conv.status === "pending") {
-                                            statusText = "Đang chờ xử lý";
+                                            statusText = "Đang chờ";
                                             statusClass = "pending";
                                         } else if (conv.status === "rejected") {
                                             statusText = "Từ chối";
@@ -408,67 +464,44 @@ const ReportPage: React.FC = () => {
                                         const saleAmount = getSaleAmount(conv);
                                         const commAmount = getPublisherCommissionAmount(conv);
                                         const commPct = getCommissionPercentLabel(conv, commAmount);
-                                        const qtySum = getConversionQuantitySum(conv);
-                                        const reasonText = getConversionReasonText(conv);
-                                        const campaignLabel =
-                                            (conv as { click_detail?: { campaign_name?: string } }).click_detail?.campaign_name ||
-                                            conv.cal_commission?.campaign_name ||
-                                            conv.cal_commission?.campaign_code ||
-                                            "—";
 
                                         return (
                                             <div
+                                                className="conversion-card"
                                                 key={conv.conversion_id || i}
-                                                className="report-order-card"
-                                                onClick={() => handleConversionClick(conv)}
-                                                role="button"
-                                                tabIndex={0}
-                                                onKeyDown={(e) => {
-                                                    if (e.key === "Enter" || e.key === " ") {
-                                                        e.preventDefault();
-                                                        handleConversionClick(conv);
-                                                    }
-                                                }}
+                                                onClick={() => setSelectedConversion(conv)}
                                             >
-                                                <div className="report-order-card__head">
-                                                    <span className="report-order-card__order">{conv.order_id || "—"}</span>
-                                                    <span className={`report-order-card__status report-order-card__status--${statusClass}`}>
+                                                <div className="conversion-card__header">
+                                                    <div className="conversion-card__campaign">
+                                                        <span className="conversion-card__campaign-name">
+                                                            {conv.campaign_name || `Mã ĐH: ${conv.order_id || "N/A"}`}
+                                                        </span>
+                                                    </div>
+                                                    <span className={`conversion-card__status conversion-card__status--${statusClass}`}>
                                                         {statusText}
                                                     </span>
                                                 </div>
-                                                <div className="report-order-card__campaign">{campaignLabel}</div>
-                                                <div className="report-order-card__metrics">
-                                                    <div className="report-order-card__metric">
-                                                        <span className="report-order-card__metric-label">Số lượng</span>
-                                                        <span className="report-order-card__metric-value">{qtySum}</span>
+                                                <div className="conversion-card__body">
+                                                    <div className="conversion-card__meta" style={!conv.campaign_name ? { justifyContent: 'flex-end' } : {}}>
+                                                        {conv.campaign_name && (
+                                                            <span className="conversion-card__id">
+                                                                Mã ĐH: {conv.order_id || "N/A"}
+                                                            </span>
+                                                        )}
+                                                        <span className="conversion-card__time">{conv.action_date_time ? formatDateTime(conv.action_date_time) : "—"}</span>
                                                     </div>
-                                                    <div className="report-order-card__metric">
-                                                        <span className="report-order-card__metric-label">Giá trị</span>
-                                                        <span className="report-order-card__metric-value">{formatNumber(saleAmount)} đ</span>
+                                                    <div className="conversion-card__amounts">
+                                                        <div className="conversion-card__amount-item">
+                                                            <span className="conversion-card__amount-label">Giá trị:</span>
+                                                            <span className="conversion-card__amount-value">{formatNumber(saleAmount)} đ</span>
+                                                        </div>
+                                                        <div className="conversion-card__amount-item">
+                                                            <span className="conversion-card__amount-label">Hoa hồng:</span>
+                                                            <span className={`conversion-card__amount-value conversion-card__amount-value--${statusClass}`}>
+                                                                +{formatNumber(commAmount)} đ {commPct ? <span className="conversion-card__pct">{commPct}</span> : null}
+                                                            </span>
+                                                        </div>
                                                     </div>
-                                                    <div className="report-order-card__metric">
-                                                        <span className="report-order-card__metric-label">Hoa hồng</span>
-                                                        <span className={`report-order-card__metric-value report-order-card__metric-value--commission ${statusClass}`}>
-                                                            {statusClass !== 'rejected' && commAmount > 0 ? '+' : ''}{formatNumber(commAmount)} đ
-                                                            {commPct ? <small className="report-order-card__pct">{commPct}</small> : null}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                                <div className="report-order-card__dates">
-                                                    <span>
-                                                        GD:{" "}
-                                                        {conv.action_date_time
-                                                            ? formatDateTime(conv.action_date_time)
-                                                            : "—"}
-                                                    </span>
-                                                    {conv.updated_time ? (
-                                                        <span className="report-order-card__date-sub">
-                                                            Cập nhật: {formatDateTime(conv.updated_time)}
-                                                        </span>
-                                                    ) : null}
-                                                </div>
-                                                <div className="report-order-card__reason" title={reasonText}>
-                                                    <span className="report-order-card__reason-label">Lý do:</span> {reasonText}
                                                 </div>
                                             </div>
                                         );
@@ -476,30 +509,21 @@ const ReportPage: React.FC = () => {
                                 </div>
                             )}
                             {conversions.length > 0 && (
-                                <div
-                                    style={{
-                                        display: "flex",
-                                        justifyContent: "space-between",
-                                        alignItems: "center",
-                                        padding: "12px 16px 24px",
-                                        gap: 12,
-                                    }}
-                                >
+                                <div className="report-pagination">
                                     <Button
                                         size="small"
+                                        variant="secondary"
                                         disabled={convPage <= 1 || loading}
                                         onClick={() => setConvPage((p) => Math.max(1, p - 1))}
                                     >
-                                        Trang trước
+                                        ←
                                     </Button>
-                                    <Text size="small" style={{ color: "#667085" }}>
-                                        Trang {convMeta.page ?? convPage}
-                                        {convMeta.total != null
-                                            ? ` · ${convMeta.total} đơn`
-                                            : ""}
+                                    <Text size="small" className="report-pagination__text">
+                                        Trang {(convMeta.page ?? convPage)}/{Math.max(1, Math.ceil((convMeta.total ?? conversions.length) / pageSize))}
                                     </Text>
                                     <Button
                                         size="small"
+                                        variant="secondary"
                                         disabled={
                                             loading ||
                                             !convMeta.total ||
@@ -507,11 +531,12 @@ const ReportPage: React.FC = () => {
                                         }
                                         onClick={() => setConvPage((p) => p + 1)}
                                     >
-                                        Trang sau
+                                        →
                                     </Button>
                                 </div>
                             )}
                         </div>
+                        <div className="report-footer">Powered by ACCESSTRADE</div>
                     </>
                 )}
             </div>
@@ -853,157 +878,10 @@ const ReportPage: React.FC = () => {
             )}
 
             {/* Conversion Detail Sheet */}
-            <BodyPortal>
-                <Sheet
-                    visible={!!selectedConversion}
-                    onClose={() => { setSelectedConversion(null); setExpandedUtm(false); setExpandedSub(false); }}
-                    autoHeight
-                    zIndex={BODY_OVERLAY_Z_INDEX}
-                >
-                    <div className="conv-detail-sheet-header">
-                        <Text.Title style={{ fontSize: 18, marginBottom: 4 }}>Chi tiết đơn hàng</Text.Title>
-                        <Text size="small" style={{ color: '#667085' }}>{selectedConversion?.order_id || '—'}</Text>
-                    </div>
-                    <Box className="conv-detail-sheet-body" p={4} pb={6} style={{ maxHeight: '80vh', overflowY: 'auto', overflowX: 'hidden', background: '#f4f5f6' }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-                            <div style={{ background: '#fff', borderRadius: 12, padding: 16 }}>
-                                <Text size="small" style={{ color: '#667085', marginBottom: 4 }}>Hoa hồng (publisher)</Text>
-                                <Text size="large" bold style={{ color: '#039855' }}>+{formatNumber(getPublisherCommissionAmount(selectedConversion || {}))} đ</Text>
-                                {(() => {
-                                    const c = selectedConversion || {};
-                                    const pct = getCommissionPercentLabel(c, getPublisherCommissionAmount(c));
-                                    return pct ? (
-                                        <Text size="xSmall" style={{ color: '#667085', marginTop: 4 }}>{pct}</Text>
-                                    ) : null;
-                                })()}
-                            </div>
-                            <div style={{ background: '#fff', borderRadius: 12, padding: 16 }}>
-                                <Text size="small" style={{ color: '#667085', marginBottom: 4 }}>Giá trị đơn hàng</Text>
-                                <Text size="large" bold style={{ color: '#111827' }}>{formatNumber(getSaleAmount(selectedConversion || {}))} đ</Text>
-                            </div>
-                        </div>
-
-                        <div className="conv-detail-section">
-                            <div className="conv-detail-row">
-                                <span className="conv-detail-row__label">Trạng thái</span>
-                                <span className="conv-detail-row__value" style={{
-                                    color: selectedConversion?.status === 'approved' ? '#039855' :
-                                        selectedConversion?.status === 'pre_approved' ? '#b05c0d' :
-                                            selectedConversion?.status === 'rejected' ? '#d92d20' : '#006ce6'
-                                }}>{statusMap[String(selectedConversion?.status)] || selectedConversion?.status || "—"}</span>
-                            </div>
-                            <div className="conv-detail-row">
-                                <span className="conv-detail-row__label">Lý do</span>
-                                <span className="conv-detail-row__value" style={{ fontWeight: 400 }}>{getConversionReasonText(selectedConversion || {})}</span>
-                            </div>
-                            <div className="conv-detail-row">
-                                <span className="conv-detail-row__label">Tổng số lượng</span>
-                                <span className="conv-detail-row__value">{getConversionQuantitySum(selectedConversion || {})}</span>
-                            </div>
-                            <div className="conv-detail-row">
-                                <span className="conv-detail-row__label">Tên chiến dịch</span>
-                                <span className="conv-detail-row__value">{selectedConversion?.campaign_name || selectedConversion?.click_detail?.campaign_name || selectedConversion?.cal_commission?.campaign_name || selectedConversion?.cal_commission?.campaign_code || "—"}</span>
-                            </div>
-                            <div className="conv-detail-row">
-                                <span className="conv-detail-row__label">Mã giới thiệu</span>
-                                <span className="conv-detail-row__value">{selectedConversion?.pub_utm_param?.sub || selectedConversion?.publisher_name || "—"}</span>
-                            </div>
-                            <div className="conv-detail-row">
-                                <span className="conv-detail-row__label">Nền tảng thiết bị</span>
-                                <span className="conv-detail-row__value" style={{ fontWeight: 400 }}>
-                                    {selectedConversion?.click_detail?.client?.deviceOs ? `${selectedConversion.click_detail.client.deviceOs}${selectedConversion.click_detail.client.deviceType ? `, ${selectedConversion.click_detail.client.deviceType}` : ''}` : "—"}
-                                </span>
-                            </div>
-                            <div className="conv-detail-row">
-                                <span className="conv-detail-row__label">Trình duyệt</span>
-                                <span className="conv-detail-row__value" style={{ fontWeight: 400 }}>
-                                    {selectedConversion?.click_detail?.client?.deviceBrowserName || selectedConversion?.user_agent || "—"}
-                                </span>
-                            </div>
-                            <div className="conv-detail-row" style={{ flexDirection: 'column', gap: 8 }}>
-                                <span className="conv-detail-row__label">Link affiliate</span>
-                                <span className="conv-detail-row__value conv-detail-row__value--link" style={{ fontSize: 13, textAlign: 'left', fontWeight: 400 }}>
-                                    {selectedConversion?.click_detail?.click_uri || selectedConversion?.click_detail?.target_uri || "—"}
-                                </span>
-                            </div>
-                            <div className="conv-detail-row">
-                                <span className="conv-detail-row__label">Ngày click</span>
-                                <span className="conv-detail-row__value" style={{ fontWeight: 400 }}>{selectedConversion?.click_detail?.click_time?.replace('T', ' ')?.split('+')[0] || "—"}</span>
-                            </div>
-                            <div className="conv-detail-row">
-                                <span className="conv-detail-row__label">Ngày đặt hàng</span>
-                                <span className="conv-detail-row__value" style={{ fontWeight: 400 }}>{selectedConversion?.action_date_time?.replace('T', ' ')?.split('+')[0] || "—"}</span>
-                            </div>
-                        </div>
-
-                        {selectedConversion?.conversion_parts && selectedConversion.conversion_parts.length > 0 && (
-                            <div className="conv-detail-section">
-                                <Text size="normal" bold style={{ marginBottom: 12, display: 'block', color: '#111827' }}>Danh sách sản phẩm</Text>
-                                <div className="report-table-wrapper" style={{ margin: '0 -16px', overflowX: 'auto', borderTop: '1px solid #edf0f2', borderBottom: 'none' }}>
-                                    <div className="report-table" style={{ minWidth: 800, display: 'flex', flexDirection: 'column' }}>
-                                        <div className="report-table__header" style={{ display: 'flex', background: '#f9fafb', padding: '12px 16px', fontSize: 13, color: '#6b7280', fontWeight: 600, alignItems: 'center' }}>
-                                            <div style={{ width: 40, flexShrink: 0 }}>ID</div>
-                                            <div style={{ width: 80, flexShrink: 0 }}>SKU</div>
-                                            <div style={{ flex: 1, minWidth: 150 }}>Tên sản phẩm</div>
-                                            <div style={{ width: 80, textAlign: 'center', flexShrink: 0 }}>Số lượng</div>
-                                            <div style={{ width: 140, flexShrink: 0 }}>Nhóm hàng</div>
-                                            <div style={{ width: 110, textAlign: 'center', flexShrink: 0 }}>Trạng thái</div>
-                                            <div style={{ width: 110, textAlign: 'right', flexShrink: 0 }}>Giá trị đơn hàng</div>
-                                        </div>
-                                        {selectedConversion.conversion_parts.map((p: any, i: number) => {
-                                            const pStatus = p.status || selectedConversion?.status;
-                                            const statusText = statusMap[String(pStatus)] || pStatus || "—";
-
-                                            let statusColor = '#006ce6';
-                                            let statusBg = '#e6f0ff';
-                                            let statusBorder = '#b3d4ff';
-
-                                            if (pStatus === 'approved') {
-                                                statusColor = '#039855';
-                                                statusBg = '#ecfdf3';
-                                                statusBorder = '#a6f4c5';
-                                            } else if (pStatus === 'pre_approved' || pStatus === 'pending') {
-                                                statusColor = '#b05c0d';
-                                                statusBg = '#fef0c7';
-                                                statusBorder = '#fec84b';
-                                            } else if (pStatus === 'rejected') {
-                                                statusColor = '#d92d20';
-                                                statusBg = '#fef3f2';
-                                                statusBorder = '#fec3e6';
-                                            }
-
-                                            return (
-                                                <div key={i} className="report-table__row" style={{ display: 'flex', padding: '16px', borderBottom: '1px solid #f3f4f6', alignItems: 'center' }}>
-                                                    <div style={{ width: 40, flexShrink: 0, fontSize: 13, color: '#111827', fontWeight: 500 }}>{i + 1}</div>
-                                                    <div style={{ width: 80, flexShrink: 0, fontSize: 13, color: '#6b7280' }}>{p.sku || p.product_sku || "—"}</div>
-                                                    <div style={{ flex: 1, minWidth: 150, fontSize: 13, color: '#006ce6', fontWeight: 500, paddingRight: 16 }}>{p.name || p.product_name || "—"}</div>
-                                                    <div style={{ width: 80, flexShrink: 0, textAlign: 'center', fontSize: 13, color: '#111827' }}>{p.quantity ?? p.qty ?? 1}</div>
-                                                    <div style={{ width: 140, flexShrink: 0, fontSize: 13, color: '#6b7280', paddingRight: 16 }}>{p.category || p.category_name || "—"}</div>
-                                                    <div style={{ width: 110, flexShrink: 0, textAlign: 'center' }}>
-                                                        <span style={{
-                                                            display: 'inline-block',
-                                                            padding: '4px 10px',
-                                                            borderRadius: 16,
-                                                            border: `1px solid ${statusBorder}`,
-                                                            background: statusBg,
-                                                            color: statusColor,
-                                                            fontSize: 11,
-                                                            fontWeight: 500
-                                                        }}>
-                                                            {statusText}
-                                                        </span>
-                                                    </div>
-                                                    <div style={{ width: 110, flexShrink: 0, textAlign: 'right', fontSize: 13, color: '#111827', fontWeight: 500 }}>{formatNumber(getPartLineAmount(p))} đ</div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </Box>
-                </Sheet>
-            </BodyPortal>
+            <ConversionDetailSheet
+                conversionId={selectedConversion?.id || selectedConversion?.conversion_id || null}
+                onClose={() => setSelectedConversion(null)}
+            />
         </Page>
     );
 };

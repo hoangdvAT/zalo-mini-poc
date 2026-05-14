@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useSetAtom } from "jotai";
-import { Page, Text, Avatar, Icon, useNavigate, Button, Modal } from "zmp-ui";
+import { Page, Text, Avatar, Icon, useNavigate, Button, Modal, useSnackbar } from "zmp-ui";
 import { useAuth } from "@/hooks/useAuth";
 import { adSpaceCodeAtom } from "@/state/job";
 import { chooseImage } from "zmp-sdk/apis";
 import {
+    checkEkycSidebarStatus,
+    fetchBrandSetting,
     fetchReportOverview,
     fetchPublisherProfile,
 } from "@/services/api";
@@ -15,12 +17,14 @@ const DEFAULT_AVATAR = "https://picsum.photos/seed/avatar/200/200";
 
 const ProfilePage: React.FC = () => {
     const navigate = useNavigate();
+    const { openSnackbar } = useSnackbar();
     const setAdSpaceCode = useSetAtom(adSpaceCodeAtom);
     const { user, isAuthenticated, logout } = useAuth();
     const [avatarUrl, setAvatarUrl] = useState<string>(DEFAULT_AVATAR);
     const [loading, setLoading] = useState(true);
     const [publisherProfile, setPublisherProfile] = useState<PublisherProfile | null>(null);
     const [incomeTotal, setIncomeTotal] = useState<number>(0);
+    const [checkingEContract, setCheckingEContract] = useState(false);
 
     const [logoutModalVisible, setLogoutModalVisible] = useState(false);
 
@@ -83,6 +87,62 @@ const ProfilePage: React.FC = () => {
         }
     };
 
+    const handleOpenEContract = useCallback(async () => {
+        if (checkingEContract) {
+            return;
+        }
+        if (!isAuthenticated) {
+            navigate("/login?redirect=/e-contract");
+            return;
+        }
+
+        setCheckingEContract(true);
+        try {
+            const [brandSetting, sidebarStatus] = await Promise.all([
+                fetchBrandSetting(),
+                checkEkycSidebarStatus(),
+            ]);
+            const enableEkyc =
+                brandSetting?.enable_ekyc === true ||
+                String(brandSetting?.enable_ekyc ?? "").trim() === "1";
+
+            if (!enableEkyc) {
+                openSnackbar({
+                    type: "error",
+                    text: "Hệ thống hiện chưa bật Hợp đồng điện tử.",
+                    duration: 3000,
+                });
+                return;
+            }
+
+            const rawRecordCount = sidebarStatus.ekyc?.record_count;
+            const recordCount =
+                typeof rawRecordCount === "number"
+                    ? rawRecordCount
+                    : Number(rawRecordCount ?? 0);
+
+            if (recordCount > 0) {
+                navigate("/e-contract");
+                return;
+            }
+
+            openSnackbar({
+                type: "error",
+                text: "Tài khoản chưa đủ điều kiện để vào Hợp đồng điện tử.",
+                duration: 3000,
+            });
+        } catch (error) {
+            console.error("[Profile] Không kiểm tra được điều kiện e-contract:", error);
+            openSnackbar({
+                type: "error",
+                text: "Không kiểm tra được điều kiện Hợp đồng điện tử.",
+                duration: 3000,
+            });
+        } finally {
+            setCheckingEContract(false);
+        }
+    }, [checkingEContract, isAuthenticated, navigate, openSnackbar]);
+
     return (
         <Page className="profile-page" hideScrollbar>
             <div className="profile-header">
@@ -120,7 +180,7 @@ const ProfilePage: React.FC = () => {
                     </div>
                     <Icon icon="zi-chevron-right" className="profile-menu-item__arrow" />
                 </div>
-                <div className="profile-menu-item" onClick={() => navigate("/e-contract")}>
+                <div className="profile-menu-item" onClick={handleOpenEContract}>
                     <div className="profile-menu-item__left">
                         <Icon icon="zi-inbox" className="profile-menu-item__icon" />
                         <span className="profile-menu-item__text">Hợp đồng điện tử</span>
