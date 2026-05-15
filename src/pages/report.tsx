@@ -482,8 +482,8 @@ const ReportPage: React.FC = () => {
                                                     </span>
                                                 </div>
                                                 <div className="conversion-card__body">
-                                                    <div className="conversion-card__meta" style={!conv.campaign_name ? { justifyContent: 'flex-end' } : {}}>
-                                                        {conv.campaign_name && (
+                                                    <div className="conversion-card__meta" style={!conv.conv.click_detail ? { justifyContent: 'flex-end' } : {}}>
+                                                        {conv.click_detail && (
                                                             <span className="conversion-card__id">
                                                                 Mã ĐH: {conv.order_id || "N/A"}
                                                             </span>

@@ -5608,6 +5608,23 @@ body.zmp-custom-date-range-open .zaui-sheet .zaui-modal-wrapper {
     background: #e5e7eb;
     border-radius: 2px;
   }
+
+  &__close {
+    position: absolute;
+    top: 18px;
+    right: 16px;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 999px;
+    background: #f3f4f6;
+    color: #111827;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    cursor: pointer;
+  }
 }
 
 .conv-detail-section {

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Sheet, Text, Box } from "zmp-ui";
+import { Sheet, Text, Box, Icon } from "zmp-ui";
 import { BodyPortal, BODY_OVERLAY_Z_INDEX } from "@/components/base";
 import { formatNumber } from "@/utils/format";
 import {
@@ -29,6 +29,16 @@ function getTextValue(value: unknown): string | null {
     if (typeof value === "string" && value.trim()) return value.trim();
     if (typeof value === "number") return String(value);
     return null;
+}
+
+function getDisplayLinkValue(...values: unknown[]): string {
+    for (const value of values) {
+        const text = getTextValue(value);
+        if (!text) continue;
+        if (text === "#" || text.toLowerCase() === "local api") continue;
+        return text;
+    }
+    return EMPTY_VALUE;
 }
 
 function formatDateTime(value: unknown): string {
@@ -143,14 +153,11 @@ export const ConversionDetailSheet: React.FC<ConversionDetailSheetProps> = ({
         getTextValue(conversion?.order_name) ||
         getTextValue(conversion?.cal_commission?.campaign_code) ||
         EMPTY_VALUE;
-    const affiliateLink =
-        (getTextValue(conversion?.click_detail?.referer_uri) &&
-        conversion?.click_detail?.referer_uri !== "#"
-            ? getTextValue(conversion?.click_detail?.referer_uri)
-            : null) ||
-        getTextValue(conversion?.click_detail?.click_uri) ||
-        getTextValue(conversion?.click_detail?.target_uri) ||
-        EMPTY_VALUE;
+    const affiliateLink = getDisplayLinkValue(
+        conversion?.click_detail?.referer_uri,
+        conversion?.click_detail?.click_uri,
+        conversion?.click_detail?.target_uri
+    );
     const referralCode =
         getTextValue(conversion?.ref_code) ||
         getTextValue(conversion?.pub_utm_param?.sub) ||
@@ -213,6 +220,19 @@ export const ConversionDetailSheet: React.FC<ConversionDetailSheetProps> = ({
                 ) : selectedConversion ? (
                     <>
                         <div className="conv-detail-sheet-header">
+                            <button
+                                type="button"
+                                className="conv-detail-sheet-header__close"
+                                onClick={() => {
+                                    onClose();
+                                    setSelectedConversion(null);
+                                    setExpandedUtm(false);
+                                    setExpandedSub(false);
+                                }}
+                                aria-label="Đóng chi tiết đơn hàng"
+                            >
+                                <Icon icon="zi-close" size={20} />
+                            </button>
                             <Text.Title style={{ fontSize: 18, marginBottom: 4 }}>
                                 Chi tiết đơn hàng
                             </Text.Title>
