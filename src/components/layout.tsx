@@ -69,7 +69,7 @@ const Layout: React.FC = () => {
   return (
     <App theme={getSystemInfo().zaloTheme as AppProps["theme"]}>
       {/* @ts-ignore */}
-      <SnackbarProvider>
+      <SnackbarProvider zIndex={999999}>
         <AuthInit>
           <ZMPRouter>
             <AuthGuard>

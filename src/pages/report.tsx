@@ -162,6 +162,14 @@ const ReportPage: React.FC = () => {
         rejected: "Từ chối",
     };
 
+    const isWithinMaxDays = (startDate: Date, endDate: Date, maxDays: number):boolean => {
+        const diffMs = Math.abs(endDate.getTime() - startDate.getTime());
+    
+        const diffDays = diffMs / (1000 * 60 * 60 * 24);
+    
+        return diffDays <= maxDays;
+    }
+
     const loadData = useCallback(async () => {
         if (!isAuthenticated) return;
         setLoading(true);
@@ -482,8 +490,8 @@ const ReportPage: React.FC = () => {
                                                     </span>
                                                 </div>
                                                 <div className="conversion-card__body">
-                                                    <div className="conversion-card__meta" style={!conv.conv.click_detail ? { justifyContent: 'flex-end' } : {}}>
-                                                        {conv.click_detail && (
+                                                    <div className="conversion-card__meta" style={!conv.conv?.click_detail ? { justifyContent: 'flex-end' } : {}}>
+                                                        {conv?.click_detail && (
                                                             <span className="conversion-card__id">
                                                                 Mã ĐH: {conv.order_id || "N/A"}
                                                             </span>
@@ -606,7 +614,12 @@ const ReportPage: React.FC = () => {
 
             {/* Campaign Sheet */}
             <BodyPortal>
-                <Sheet visible={campaignSheetVisible} onClose={() => setCampaignSheetVisible(false)} autoHeight zIndex={BODY_OVERLAY_Z_INDEX}>
+                <Sheet
+                    autoHeight
+                    visible={campaignSheetVisible}
+                    zIndex={BODY_OVERLAY_Z_INDEX}
+                    style={{maxHeight: "85dvh"}}
+                    onClose={() => setCampaignSheetVisible(false)}>
                     <div className="filter-sheet-header">
                         <Text.Title className="filter-sheet-header__title">Chọn chương trình</Text.Title>
                         <div onClick={() => setCampaignSheetVisible(false)}><Icon icon="zi-close" /></div>
@@ -862,13 +875,20 @@ const ReportPage: React.FC = () => {
                                         )}
                                     </Box>
                                 </div>
-                                <Button fullWidth style={{ marginTop: 24 }} onClick={() => {
-                                    setStartDate(tempStartDate);
-                                    setEndDate(tempEndDate);
-                                    setFilterTimeLabel(`${tempStartDate.toLocaleDateString('vi-VN')} - ${tempEndDate.toLocaleDateString('vi-VN')}`);
-                                    setConvPage(1);
-                                    setDatePickerVisible(false);
-                                }}>
+                                { !isWithinMaxDays(tempStartDate, tempEndDate, 90) ?
+                                    <p className="text-red-500">Thời gian lọc không được phép vượt quá 90 ngày</p>
+                                    :
+                                    null
+                                }
+                                <Button fullWidth style={{ marginTop: 24 }}
+                                    disabled={!isWithinMaxDays(tempStartDate, tempEndDate, 90)}
+                                    onClick={() => {
+                                        setStartDate(tempStartDate);
+                                        setEndDate(tempEndDate);
+                                        setFilterTimeLabel(`${tempStartDate.toLocaleDateString('vi-VN')} - ${tempEndDate.toLocaleDateString('vi-VN')}`);
+                                        setConvPage(1);
+                                        setDatePickerVisible(false);
+                                    }}>
                                     Áp dụng
                                 </Button>
                             </Box>

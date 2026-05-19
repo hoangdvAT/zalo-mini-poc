@@ -523,7 +523,7 @@ export async function fetchConversions(params: {
         if (params.status !== undefined && params.status !== null && params.status !== "") {
             queryParams.append("status", String(params.status));
         }
-        if (params.order_id) queryParams.append("filters[order_id]", params.order_id);
+        if (params.order_id) queryParams.append("order_id", params.order_id);
         // if (params.utm_param && params.utm_value) queryParams.append(`filters[${params.utm_param}]`, params.utm_value);
         // if (params.sub_param && params.sub_value) queryParams.append(`filters[${params.sub_param}]`, params.sub_value);
         if (params.utm_param && params.utm_value) queryParams.append("utm", JSON.stringify({ label: params.utm_param, value: params.utm_value }));

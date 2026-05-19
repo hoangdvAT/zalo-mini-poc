@@ -187,13 +187,13 @@ const ProfilePage: React.FC = () => {
                     </div>
                     <Icon icon="zi-chevron-right" className="profile-menu-item__arrow" />
                 </div>
-                <div className="profile-menu-item">
+                {/* <div className="profile-menu-item">
                     <div className="profile-menu-item__left">
                         <Icon icon="zi-call" className="profile-menu-item__icon" />
                         <span className="profile-menu-item__text">Trợ giúp</span>
                     </div>
                     <Icon icon="zi-chevron-right" className="profile-menu-item__arrow" />
-                </div>
+                </div> */}
             </div>
 
             <div className="profile-logout-group">

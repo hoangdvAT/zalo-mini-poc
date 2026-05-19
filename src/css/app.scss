@@ -76,6 +76,10 @@
 .zaui-btn-primary {
   background-color: var(--primary) !important;
   color: #fff !important;
+
+  &:disabled {
+    background-color: #ddd !important;
+  }
 }
 
 .zaui-btn-secondary {
@@ -5591,23 +5595,23 @@ body.zmp-custom-date-range-open .zaui-sheet .zaui-modal-wrapper {
 }
 
 .conv-detail-sheet-header {
-  padding: 20px 16px 16px;
+  padding: 0px 16px 16px 16px;
   background: #fff;
   border-radius: 20px 20px 0 0;
   text-align: center;
   position: relative;
 
-  &::after {
-    content: '';
-    position: absolute;
-    top: 8px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 40px;
-    height: 4px;
-    background: #e5e7eb;
-    border-radius: 2px;
-  }
+  // &::after {
+  //   content: '';
+  //   position: absolute;
+  //   top: 8px;
+  //   left: 50%;
+  //   transform: translateX(-50%);
+  //   width: 40px;
+  //   height: 4px;
+  //   background: #e5e7eb;
+  //   border-radius: 2px;
+  // }
 
   &__close {
     position: absolute;
