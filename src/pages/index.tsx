@@ -72,16 +72,16 @@ const HomePage: React.FC = () => {
     if (isGuest && showJoinedOnly) setShowJoinedOnly(false);
   }, [isGuest, showJoinedOnly]);
 
-    useEffect(() => {
-      if (isGuest) return;
-      const loadIncome = async () => {
-        try {
-          const { from_date, to_date } = getCurrentMonthRangeYmd();
+  useEffect(() => {
+    if (isGuest) return;
+    const loadIncome = async () => {
+      try {
+        const { from_date, to_date } = getCurrentMonthRangeYmd();
 
-          const statsMonth = await fetchReportOverview({
-            from_date,
-            to_date,
-          });
+        const statsMonth = await fetchReportOverview({
+          from_date,
+          to_date,
+        });
 
         if (statsMonth?.pub_commission) {
           setIncomeData({
@@ -111,6 +111,9 @@ const HomePage: React.FC = () => {
     setCategories(uniqueCategories);
   }, [campaigns, setCategories]);
 
+  /**
+   * Lấy danh sách campaigns (dựa vào showJoinedOnly: boolean để lấy danh sách chưa tham gia hoặc đã tham gia)
+   */
   const fetchCampaignPage = useCallback(
     async (page: number) => {
       if (showJoinedOnly) {
@@ -374,8 +377,8 @@ const HomePage: React.FC = () => {
         ) : (
           <>
             <div className="campaign-list">
-              {campaigns.map((campaign) => (
-                <CampaignCard key={campaign.id} {...mapCampaignToCard(campaign)} />
+              {campaigns.map((campaign: any) => (
+                <CampaignCard key={campaign.id} {...mapCampaignToCard(campaign)} campaign={campaign} />
               ))}
             </div>
             {loadingMore && (

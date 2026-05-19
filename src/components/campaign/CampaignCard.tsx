@@ -22,6 +22,8 @@ const PlusIcon = () => (
 );
 
 export interface CampaignCardProps {
+  campaign?: any;
+  
   id: string;
   imageUrl: string;
   title: string;
@@ -42,6 +44,8 @@ export interface CampaignCardProps {
 }
 
 const CampaignCard: React.FC<CampaignCardProps> = ({
+  campaign,
+
   id,
   imageUrl,
   title,
@@ -117,6 +121,52 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
     ]
   );
 
+  const handleCta2 = useCallback(
+    async (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (contractsLoading || joinSubmitting) return;
+      if (isGuest) {
+        navigate(`/login?redirect=/job/${id}`);
+        return;
+      }
+      if (campaign.total === 0) {
+        setJoinSubmitting(true);
+        try {
+          const res = await fetchJoinCampaign({ campaign_id: id });
+          await applyJoinCampaignResponse(res, {
+            openSnackbar: ({ type, text, duration }) =>
+              openSnackbar({ type, text, duration: duration ?? 3500 }),
+            navigate,
+            onSuccess: onJoinSuccess,
+            onNeedAdSpace: (message) => setAdSpaceModal({ open: true, message }),
+          });
+        } catch {
+          openSnackbar({
+            type: "error",
+            text: "Có lỗi xảy ra. Vui lòng thử lại.",
+            duration: 3500,
+          });
+        } finally {
+          setJoinSubmitting(false);
+        }
+        return;
+      }
+      if (campaign.active > 0 && campaign.has_deeplink) {
+        navigate(`/get-link/${id}`);
+      }
+    },
+    [
+      contractsLoading,
+      joinSubmitting,
+      id,
+      isGuest,
+      ctaMode,
+      navigate,
+      openSnackbar,
+      onJoinSuccess,
+    ]
+  );
+
   const ctaBusy = Boolean(contractsLoading || joinSubmitting);
   const useHomeShareCta = variant === "home" && (isGuest || ctaMode === "create-link");
 
@@ -175,7 +225,7 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
           )
         ) : null}
         {/* Web: rejected — không render CTA trên card list; chi tiết xem `job-detail`. */}
-        {useHomeShareCta ? (
+        {/* {useHomeShareCta ? (
           <button type="button" className="campaign-card__btn-cta campaign-card__btn-cta--home" onClick={handleCta}>
             <img src={iconShare} alt="" width={18} height={18} />
             <span>{`Chia sẻ nhận ${commissionDisplay}`}</span>
@@ -205,7 +255,34 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
             <PlusIcon />
             <span>Tham gia</span>
           </button>
-        )}
+        )} */}
+        { ctaBusy ? (
+          <button type="button" className="campaign-card__btn-cta campaign-card__btn-cta--loading" disabled>
+            <span className="campaign-card__btn-cta-spinner" />
+            <span>{joinSubmitting ? "Đang xử lý..." : "Đang tải..."}</span>
+          </button>
+        ): campaign.total === 0 ? (
+          <button type="button" className="campaign-card__btn-cta campaign-card__btn-cta--outline" onClick={handleCta2}>
+            <PlusIcon />
+            <span>Tham gia</span>
+          </button>
+        ) : campaign.active === 0 && campaign.pending > 0 ? (
+          <button type="button" className="campaign-card__btn-cta campaign-card__btn-cta--pending" disabled>
+            <ClockWaitIcon />
+            <span>Chờ phản hồi</span>
+          </button>
+        ) : variant === "home" && (isGuest || (campaign.active > 0 && campaign.has_deeplink)) ? (
+          <button type="button" className="campaign-card__btn-cta campaign-card__btn-cta--home" onClick={handleCta2}>
+            <img src={iconShare} alt="" width={18} height={18} />
+            <span>{`Chia sẻ nhận ${commissionDisplay}`}</span>
+          </button>
+        ) : campaign.active > 0 && campaign.has_deeplink ? (
+          <button type="button" className="campaign-card__btn-cta campaign-card__btn-cta--primary-blue" onClick={handleCta2}>
+            <LinkChainIcon />
+            <span>Tạo link</span>
+          </button>
+        ) : null
+        }
       </div>
     </div>
     <Modal
