@@ -220,6 +220,9 @@ export interface ConversionItem {
   };
   reason?: { log_time: string; log_action: string }[];
   conversion_parts?: any[];
+
+  campaign_name?: any;
+  conv?: any;
 }
 
 export interface IncomeSummary {

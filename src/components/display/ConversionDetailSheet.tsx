@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { Sheet, Text, Box, Icon } from "zmp-ui";
+import React, { useEffect, useMemo, useState } from "react";
+import { Sheet, Text, Box, Icon, useSnackbar } from "zmp-ui";
 import { BodyPortal, BODY_OVERLAY_Z_INDEX } from "@/components/base";
 import { formatNumber } from "@/utils/format";
 import {
@@ -29,16 +29,6 @@ function getTextValue(value: unknown): string | null {
     if (typeof value === "string" && value.trim()) return value.trim();
     if (typeof value === "number") return String(value);
     return null;
-}
-
-function getDisplayLinkValue(...values: unknown[]): string {
-    for (const value of values) {
-        const text = getTextValue(value);
-        if (!text) continue;
-        if (text === "#" || text.toLowerCase() === "local api") continue;
-        return text;
-    }
-    return EMPTY_VALUE;
 }
 
 function formatDateTime(value: unknown): string {
@@ -87,6 +77,7 @@ export const ConversionDetailSheet: React.FC<ConversionDetailSheetProps> = ({
 }) => {
     const [selectedConversion, setSelectedConversion] = useState<any>(null);
     const [loading, setLoading] = useState(false);
+    const { openSnackbar } = useSnackbar();
     const [expandedUtm, setExpandedUtm] = useState(false);
     const [expandedSub, setExpandedSub] = useState(false);
 
@@ -153,11 +144,7 @@ export const ConversionDetailSheet: React.FC<ConversionDetailSheetProps> = ({
         getTextValue(conversion?.order_name) ||
         getTextValue(conversion?.cal_commission?.campaign_code) ||
         EMPTY_VALUE;
-    const affiliateLink = getDisplayLinkValue(
-        conversion?.click_detail?.referer_uri,
-        conversion?.click_detail?.click_uri,
-        conversion?.click_detail?.target_uri
-    );
+    const affiliateLink = conversion?.click_detail?.referer_uri?.trim();
     const referralCode =
         getTextValue(conversion?.ref_code) ||
         getTextValue(conversion?.pub_utm_param?.sub) ||
@@ -200,6 +187,29 @@ export const ConversionDetailSheet: React.FC<ConversionDetailSheetProps> = ({
         ["sub4", getTextValue(conversion?.pub_utm_param?.sub4)],
     ].filter(([, value]) => Boolean(value)) as Array<[string, string]>;
 
+    const handleCopy = async (text: string) => {
+        try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(text);
+            } else {
+                const el = document.createElement("textarea");
+                el.value = text;
+                el.style.position = "fixed";
+                el.style.top = "0";
+                el.style.left = "0";
+                document.body.appendChild(el);
+                el.select();
+                document.execCommand("copy");
+                document.body.removeChild(el);
+            }
+    
+            openSnackbar({ type: "success", text: "Đã sao chép.", duration: 3000 });
+        } catch (err) {
+            console.error("handleCopy: ", err);
+            openSnackbar({ type: "error", text: "Sao chép thất bại.", duration: 3000 });
+        }
+    };
+
     return (
         <BodyPortal>
             <Sheet
@@ -212,6 +222,7 @@ export const ConversionDetailSheet: React.FC<ConversionDetailSheetProps> = ({
                 }}
                 autoHeight
                 zIndex={BODY_OVERLAY_Z_INDEX}
+                style={{maxHeight: "85dvh"}}
             >
                 {loading ? (
                     <div style={{ padding: "32px", textAlign: "center", color: "#6b7280" }}>
@@ -312,8 +323,9 @@ export const ConversionDetailSheet: React.FC<ConversionDetailSheetProps> = ({
                                             textAlign: "left",
                                             fontWeight: 400,
                                         }}
+                                        onClick={() => (affiliateLink && affiliateLink !== "#") && handleCopy(affiliateLink)}
                                     >
-                                        {affiliateLink}
+                                        {(affiliateLink && affiliateLink !== "#") ? affiliateLink : EMPTY_VALUE }
                                     </span>
                                 </div>
                                 <div className="conv-detail-row">
@@ -594,14 +606,22 @@ export const ConversionDetailSheet: React.FC<ConversionDetailSheetProps> = ({
                                                     statusColor = "#039855";
                                                     statusBg = "#ecfdf3";
                                                     statusBorder = "#a6f4c5";
-                                                } else if (
-                                                    pStatus === "pre_approved" ||
-                                                    pStatus === "pending"
+                                                }
+                                                else if (
+                                                    pStatus === "pre_approved"
                                                 ) {
                                                     statusColor = "#b05c0d";
                                                     statusBg = "#fef0c7";
                                                     statusBorder = "#fec84b";
-                                                } else if (pStatus === "rejected") {
+                                                }
+                                                else if (
+                                                    pStatus === "pending"
+                                                ) {
+                                                    statusColor = "#175CD3";
+                                                    statusBg = "#EFF8FF";
+                                                    statusBorder = "#B2DDFF";
+                                                }
+                                                else if (pStatus === "rejected") {
                                                     statusColor = "#d92d20";
                                                     statusBg = "#fef3f2";
                                                     statusBorder = "#fec3e6";

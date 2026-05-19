@@ -145,7 +145,7 @@ const HomePage: React.FC = () => {
       const raw = result.campaigns || [];
       const display = showJoinedOnly ? filterJoinTabCampaignsHasContract(raw) : raw;
       setCampaigns(display);
-      const meta = result.meta;
+      const meta: any = result.meta;
       const lastPage = Math.max(meta.last_page || 1, 1);
       const curPage = meta.current_page || 1;
       const perPage = meta.per_page || 20;
@@ -196,7 +196,7 @@ const HomePage: React.FC = () => {
         }
         return merged;
       });
-      const meta = result.meta;
+      const meta: any = result.meta;
       const lastPage = Math.max(meta.last_page || 1, 1);
       const curPage = meta.current_page || nextPage;
       const perPage = meta.per_page || 20;
