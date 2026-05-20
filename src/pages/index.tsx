@@ -22,12 +22,14 @@ import {
   fetchCampaignsWithContract,
   createTrackingLink,
   fetchReportOverview,
+  fetchCampaignConfigs,
 } from "@/services/api";
 import { CampaignCard, type CampaignCardCtaMode } from "@/components/campaign";
 import {
   getCampaignCommissionDisplay,
   resolveCtaModeFromCampaignListItem,
   filterJoinTabCampaignsHasContract,
+  resolveCtaModeFromCampaignListItem2,
 } from "@/utils/campaignUi";
 import HomeHeader from "@/components/home/HomeHeader";
 import { IllustrationEmptySearch } from "@/components/icons/LineIllustrations";
@@ -57,6 +59,7 @@ const HomePage: React.FC = () => {
   const [, setShareState] = useAtom(shareSheetStateAtom);
   const setSelectedCampaign = useSetAtom(selectedCampaignAtom);
   const [sharingInProgress, setSharingInProgress] = useState(false);
+  const [campaignConfigs, setCampaignConfigs] = useState();
   const navigate = useNavigate();
 
   const [incomeData, setIncomeData] = useState({
@@ -72,16 +75,25 @@ const HomePage: React.FC = () => {
     if (isGuest && showJoinedOnly) setShowJoinedOnly(false);
   }, [isGuest, showJoinedOnly]);
 
-    useEffect(() => {
-      if (isGuest) return;
-      const loadIncome = async () => {
-        try {
-          const { from_date, to_date } = getCurrentMonthRangeYmd();
+  // useEffect(() => {
+  //   async function fetchCampaignConfigsFunc () {
+  //     const campaignConfigs = await fetchCampaignConfigs();
+  //     setCampaignConfigs(campaignConfigs);
+  //   }
 
-          const statsMonth = await fetchReportOverview({
-            from_date,
-            to_date,
-          });
+  //   fetchCampaignConfigsFunc();
+  // }, []);
+
+  useEffect(() => {
+    if (isGuest) return;
+    const loadIncome = async () => {
+      try {
+        const { from_date, to_date } = getCurrentMonthRangeYmd();
+
+        const statsMonth = await fetchReportOverview({
+          from_date,
+          to_date,
+        });
 
         if (statsMonth?.pub_commission) {
           setIncomeData({
@@ -111,6 +123,9 @@ const HomePage: React.FC = () => {
     setCategories(uniqueCategories);
   }, [campaigns, setCategories]);
 
+  /**
+   * Lấy danh sách campaigns (dựa vào showJoinedOnly: boolean để lấy danh sách chưa tham gia hoặc đã tham gia)
+   */
   const fetchCampaignPage = useCallback(
     async (page: number) => {
       if (showJoinedOnly) {
@@ -297,10 +312,17 @@ const HomePage: React.FC = () => {
     return resolveCtaModeFromCampaignListItem(campaign);
   };
 
+  /** CTA chỉ từ payload list `without-contract` — không gọi N API contracts/campaign (giống web). */
+  const resolveCardCta2 = (campaign: Campaign): CampaignCardCtaMode => {
+    if (isGuest) return "join";
+    return resolveCtaModeFromCampaignListItem2(campaign);
+  };
+
   const mapCampaignToCard = (campaign: Campaign) => {
     const imageUrl = campaign.logo || "https://via.placeholder.com/300x200?text=No+Image";
     const dateRange = formatDateRange(campaign.started_at, campaign.ended_at || undefined);
-    const ctaMode = resolveCardCta(campaign);
+    // const ctaMode = resolveCardCta(campaign);
+    const ctaMode = resolveCardCta2(campaign);
 
         return {
           id: campaign.id.toString(),
@@ -317,7 +339,11 @@ const HomePage: React.FC = () => {
             // Set campaign từ list (có total/active/pending) trước khi navigate
             // để job-detail dùng ngay cho CTA mà không cần đợi fetchCampaignById
             setSelectedCampaign(campaign);
-            navigate(`/job/${campaign.id}`);
+            navigate(`/job/${campaign.id}`, {
+              state: {
+                campaignConfigs
+              }
+            });
           },
           onJoinSuccess: reloadCampaigns,
         };
@@ -374,8 +400,8 @@ const HomePage: React.FC = () => {
         ) : (
           <>
             <div className="campaign-list">
-              {campaigns.map((campaign) => (
-                <CampaignCard key={campaign.id} {...mapCampaignToCard(campaign)} />
+              {campaigns.map((campaign: any) => (
+                <CampaignCard key={campaign.id} {...mapCampaignToCard(campaign)} campaign={campaign} />
               ))}
             </div>
             {loadingMore && (

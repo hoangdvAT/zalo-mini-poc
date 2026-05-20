@@ -122,6 +122,17 @@ export interface DeepLinkRequest {
   redirect_url?: string;
   /** Mặc định mini app: `zalo_miniapp` (xem `createTrackingLink`). */
   utm_source?: string;
+  utm_campaign?: string;
+  utm_content?: string;
+  utm_medium?: string;
+  utm_term?: string;
+  sub?: string;
+  sub_1?: string;
+  sub_2?: string;
+  sub_3?: string;
+  sub_4?: string;
+  is_short_link?: boolean;
+  is_qr_code?: boolean;
 }
 
 /** Ad space gắn campaign — GET /campaigns/:id/ad-spaces (portal: DeepLinkService.getAdSpacesByCampaignId) */

@@ -5,7 +5,7 @@ import { fetchJoinCampaign } from "@/services/api";
 import { applyJoinCampaignResponse } from "@/utils/joinCampaignFlow";
 import iconShare from "@/static/icons/share-06.svg";
 
-export type CampaignCardCtaMode = "join" | "pending" | "create-link" | "rejected";
+export type CampaignCardCtaMode = "join" | "pending" | "create-link" | "rejected" | "";
 
 const ClockWaitIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -22,6 +22,8 @@ const PlusIcon = () => (
 );
 
 export interface CampaignCardProps {
+  campaign?: any;
+  
   id: string;
   imageUrl: string;
   title: string;
@@ -42,6 +44,8 @@ export interface CampaignCardProps {
 }
 
 const CampaignCard: React.FC<CampaignCardProps> = ({
+  campaign,
+
   id,
   imageUrl,
   title,
@@ -175,7 +179,7 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
           )
         ) : null}
         {/* Web: rejected — không render CTA trên card list; chi tiết xem `job-detail`. */}
-        {useHomeShareCta ? (
+        {/* {useHomeShareCta ? (
           <button type="button" className="campaign-card__btn-cta campaign-card__btn-cta--home" onClick={handleCta}>
             <img src={iconShare} alt="" width={18} height={18} />
             <span>{`Chia sẻ nhận ${commissionDisplay}`}</span>
@@ -205,7 +209,34 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
             <PlusIcon />
             <span>Tham gia</span>
           </button>
-        )}
+        )} */}
+        { ctaBusy ? (
+          <button type="button" className="campaign-card__btn-cta campaign-card__btn-cta--loading" disabled>
+            <span className="campaign-card__btn-cta-spinner" />
+            <span>{joinSubmitting ? "Đang xử lý..." : "Đang tải..."}</span>
+          </button>
+        ): ctaMode === "join" ? (
+          <button type="button" className="campaign-card__btn-cta campaign-card__btn-cta--outline" onClick={handleCta}>
+            <PlusIcon />
+            <span>Tham gia</span>
+          </button>
+        ) : ctaMode === "pending" ? (
+          <button type="button" className="campaign-card__btn-cta campaign-card__btn-cta--pending" disabled>
+            <ClockWaitIcon />
+            <span>Chờ phản hồi</span>
+          </button>
+        ) : useHomeShareCta ? (
+          <button type="button" className="campaign-card__btn-cta campaign-card__btn-cta--home" onClick={handleCta}>
+            <img src={iconShare} alt="" width={18} height={18} />
+            <span>{`Chia sẻ nhận ${commissionDisplay}`}</span>
+          </button>
+        ) :ctaMode === "create-link" ? (
+          <button type="button" className="campaign-card__btn-cta campaign-card__btn-cta--primary-blue" onClick={handleCta}>
+            <LinkChainIcon />
+            <span>Tạo link</span>
+          </button>
+        ) : null
+        }
       </div>
     </div>
     <Modal
