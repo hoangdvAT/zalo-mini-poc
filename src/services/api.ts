@@ -174,6 +174,20 @@ export async function loginWithZaloBackend(params: {
 // ============ CAMPAIGN API ============
 
 /**
+ * Lấy campaign configs
+ * GET /api/v1/campaign-configs
+ */
+export async function fetchCampaignConfigs(): Promise<any> {
+    try {
+        const response = await api.get(`/api/v1/campaign-configs`);
+        return response.data?.data;
+    } catch (error) {
+        console.error(`[API] Error fetchCampaignConfigs:`, error);
+        return null;
+    }
+}
+
+/**
  * Lấy danh sách campaigns (không có contract)
  * GET /api/v1/campaigns/without-contract
  */
@@ -254,13 +268,14 @@ export async function fetchContractsByCampaign(
 ): Promise<ContractListResponse> {
     try {
         // Thử endpoint mới trước (query param)
-        const response = await api.get(
-            `/api/v1/contracts?campaign_id=${campaignId}&status=${statuses.join(",")}`
-        );
-        const data = response.data?.data;
-        if (data && (data.contract || data.contracts)) {
-            return data as ContractListResponse;
-        }
+        // const response = await api.get(
+        //     `/api/v1/contracts?campaign_id=${campaignId}&status=${statuses.join(",")}`
+        // );
+        // const data = response.data?.data;
+        // if (data && (data.contract || data.contracts)) {
+        //     return data as ContractListResponse;
+        // }
+
         // Fallback: thử endpoint cũ (path param)
         const fallbackResponse = await api.get(
             `/api/v1/contracts/campaign/${campaignId}?status=${statuses.join(",")}`
@@ -412,7 +427,6 @@ export async function fetchAdSpacesByCampaignId(
         const raw = data && typeof data === "object" ? (data as Record<string, unknown>) : {};
         const list =
             (Array.isArray(raw.adSpaces) && raw.adSpaces) ||
-            (Array.isArray(raw.ad_spaces) && raw.ad_spaces) ||
             [];
         const meta =
             raw.meta && typeof raw.meta === "object"
@@ -438,8 +452,19 @@ export async function createTrackingLink(
     options?: {
         ad_space_code?: string;
         redirect_url?: string;
+        is_short_link?: boolean;
+        is_qr_code?: boolean;
         /** Ghi đè UTM; mặc định luôn gửi `zalo_miniapp` cho mọi luồng tạo link trong mini app. */
         utm_source?: string;
+        utm_campaign?: string;
+        utm_content?: string;
+        utm_medium?: string;
+        utm_term?: string;
+        sub?: string;
+        sub_1?: string;
+        sub_2?: string;
+        sub_3?: string;
+        sub_4?: string;
     }
 ): Promise<DeepLinkResponse> {
     if (!getAuthToken()) {
@@ -451,6 +476,17 @@ export async function createTrackingLink(
     };
     if (options?.ad_space_code) body.ad_space_code = options.ad_space_code;
     if (options?.redirect_url?.trim()) body.redirect_url = options.redirect_url.trim();
+    if (options?.is_short_link !== undefined) body.is_short_link = options.is_short_link;
+    if (options?.is_qr_code !== undefined) body.is_qr_code = options.is_qr_code;
+    if (options?.utm_campaign !== undefined) body.utm_campaign = options.utm_campaign.trim();
+    if (options?.utm_content !== undefined) body.utm_content = options.utm_content.trim();
+    if (options?.utm_medium !== undefined) body.utm_medium = options.utm_medium.trim();
+    if (options?.utm_term !== undefined) body.utm_term = options.utm_term.trim();
+    if (options?.sub !== undefined) body.sub = options.sub;
+    if (options?.sub_1 !== undefined) body.sub_1 = options.sub_1;
+    if (options?.sub_2 !== undefined) body.sub_2 = options.sub_2;
+    if (options?.sub_3 !== undefined) body.sub_3 = options.sub_3;
+    if (options?.sub_4 !== undefined) body.sub_4 = options.sub_4;
     const response = await api.post("/api/v1/ad-space/create-deep-link", body);
     return response.data?.data;
 }
