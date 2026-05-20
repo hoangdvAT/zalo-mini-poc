@@ -5,7 +5,7 @@ import { fetchJoinCampaign } from "@/services/api";
 import { applyJoinCampaignResponse } from "@/utils/joinCampaignFlow";
 import iconShare from "@/static/icons/share-06.svg";
 
-export type CampaignCardCtaMode = "join" | "pending" | "create-link" | "rejected";
+export type CampaignCardCtaMode = "join" | "pending" | "create-link" | "rejected" | "";
 
 const ClockWaitIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -121,52 +121,6 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
     ]
   );
 
-  const handleCta2 = useCallback(
-    async (e: React.MouseEvent) => {
-      e.stopPropagation();
-      if (contractsLoading || joinSubmitting) return;
-      if (isGuest) {
-        navigate(`/login?redirect=/job/${id}`);
-        return;
-      }
-      if (campaign.total === 0) {
-        setJoinSubmitting(true);
-        try {
-          const res = await fetchJoinCampaign({ campaign_id: id });
-          await applyJoinCampaignResponse(res, {
-            openSnackbar: ({ type, text, duration }) =>
-              openSnackbar({ type, text, duration: duration ?? 3500 }),
-            navigate,
-            onSuccess: onJoinSuccess,
-            onNeedAdSpace: (message) => setAdSpaceModal({ open: true, message }),
-          });
-        } catch {
-          openSnackbar({
-            type: "error",
-            text: "Có lỗi xảy ra. Vui lòng thử lại.",
-            duration: 3500,
-          });
-        } finally {
-          setJoinSubmitting(false);
-        }
-        return;
-      }
-      if (campaign.active > 0 && campaign.has_deeplink) {
-        navigate(`/get-link/${id}`);
-      }
-    },
-    [
-      contractsLoading,
-      joinSubmitting,
-      id,
-      isGuest,
-      ctaMode,
-      navigate,
-      openSnackbar,
-      onJoinSuccess,
-    ]
-  );
-
   const ctaBusy = Boolean(contractsLoading || joinSubmitting);
   const useHomeShareCta = variant === "home" && (isGuest || ctaMode === "create-link");
 
@@ -261,23 +215,23 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
             <span className="campaign-card__btn-cta-spinner" />
             <span>{joinSubmitting ? "Đang xử lý..." : "Đang tải..."}</span>
           </button>
-        ): campaign.total === 0 ? (
-          <button type="button" className="campaign-card__btn-cta campaign-card__btn-cta--outline" onClick={handleCta2}>
+        ): ctaMode === "join" ? (
+          <button type="button" className="campaign-card__btn-cta campaign-card__btn-cta--outline" onClick={handleCta}>
             <PlusIcon />
             <span>Tham gia</span>
           </button>
-        ) : campaign.active === 0 && campaign.pending > 0 ? (
+        ) : ctaMode === "pending" ? (
           <button type="button" className="campaign-card__btn-cta campaign-card__btn-cta--pending" disabled>
             <ClockWaitIcon />
             <span>Chờ phản hồi</span>
           </button>
-        ) : variant === "home" && (isGuest || (campaign.active > 0 && campaign.has_deeplink)) ? (
-          <button type="button" className="campaign-card__btn-cta campaign-card__btn-cta--home" onClick={handleCta2}>
+        ) : useHomeShareCta ? (
+          <button type="button" className="campaign-card__btn-cta campaign-card__btn-cta--home" onClick={handleCta}>
             <img src={iconShare} alt="" width={18} height={18} />
             <span>{`Chia sẻ nhận ${commissionDisplay}`}</span>
           </button>
-        ) : campaign.active > 0 && campaign.has_deeplink ? (
-          <button type="button" className="campaign-card__btn-cta campaign-card__btn-cta--primary-blue" onClick={handleCta2}>
+        ) :ctaMode === "create-link" ? (
+          <button type="button" className="campaign-card__btn-cta campaign-card__btn-cta--primary-blue" onClick={handleCta}>
             <LinkChainIcon />
             <span>Tạo link</span>
           </button>

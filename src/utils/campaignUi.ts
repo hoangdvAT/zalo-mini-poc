@@ -206,6 +206,19 @@ export function resolveCtaModeFromCampaignListItem(c: Campaign): CampaignListCta
     return "join";
 }
 
+export function resolveCtaModeFromCampaignListItem2(campaign: Campaign): CampaignListCtaMode | "" {
+    if (campaign.total === 0) {
+        return "join";
+    }
+    if (Number(campaign.active) === 0 && Number(campaign.pending) > 0) {
+        return "pending";
+    }
+    if (Number(campaign.active) > 0 && campaign.has_deeplink) {
+        return "create-link";
+    }
+    return "";
+}
+
 /**
  * Payload campaign đã đủ để suy CTA giống list (total/active/pending hoặc snapshot contract),
  * không cần gọi thêm GET contracts/campaign.

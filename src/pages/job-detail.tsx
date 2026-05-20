@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import { useParams } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 import { Page, Text, Button, Icon, useSnackbar, Modal } from "zmp-ui";
 import { useNavigate } from "zmp-ui";
 import { useAtom, useAtomValue } from "jotai";
@@ -14,6 +14,7 @@ import {
     resolveCtaModeFromCampaignListItem,
     campaignPayloadHasCtaHint,
     resolveContractCtaMode,
+    resolveCtaModeFromCampaignListItem2,
 } from "@/utils/campaignUi";
 import type { CampaignCardCtaMode } from "@/components/campaign/CampaignCard";
 import { selectedCampaignAtom } from "@/state/job";
@@ -53,8 +54,17 @@ function getStatusBadge(s: number): { label: string; color: string; bg: string; 
 const JobDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const location = useLocation();
     const { openSnackbar } = useSnackbar();
     const [campaign, setCampaign] = useAtom(selectedCampaignAtom);
+    const [contractStatus, setContractStatus] = useState({
+        pending: 0,
+        activated: 0,
+        rejected: 0,
+        in_active: 0,
+        paused: 0,
+        lock: 0,
+    });
     const [loading, setLoading] = useState(true);
     const [token] = useAtom(authTokenAtom);
     const isGuest = useAtomValue(isGuestAtom);
@@ -66,6 +76,9 @@ const JobDetailPage: React.FC = () => {
         open: false,
         message: "",
     });
+
+    // console.log("campaign form atom: ", campaign);
+    // console.log("location.state?.campaignConfigs: ", location.state?.campaignConfigs);
 
     useEffect(() => {
         const el = oneClickRef.current;
@@ -93,6 +106,7 @@ const JobDetailPage: React.FC = () => {
         fetchCampaignById(id)
             .then((data) => {
                 if (data) {
+                    // Chú ý: check lại logic giữ total, active, pending có cần thiết hay không
                     // Merge: giữ lại total/active/pending từ list nếu API detail không trả về
                     setCampaign((prev) => {
                         if (!prev || prev.id !== data.id) return data;
@@ -103,6 +117,10 @@ const JobDetailPage: React.FC = () => {
                             pending: data.pending ?? prev.pending,
                         } as typeof data;
                     });
+
+                    if (campaign) {
+                        setCtaMode(resolveCardCta2(campaign));
+                    }
                 } else {
                     setCampaign(data);
                 }
@@ -110,6 +128,11 @@ const JobDetailPage: React.FC = () => {
             })
             .catch(() => setLoading(false));
     }, [id, setCampaign]);
+
+    const resolveCardCta2 = (campaign: Campaign): CampaignCardCtaMode => {
+        if (isGuest) return "join";
+        return resolveCtaModeFromCampaignListItem2(campaign);
+    };
 
     /** CTA: luôn gọi contracts/campaign để xác định chính xác (API list total/active/pending không đáng tin). */
     useEffect(() => {
@@ -119,20 +142,41 @@ const JobDetailPage: React.FC = () => {
         fetchContractsByCampaign(campaign.id)
             .then((res) => {
                 const contracts = res.contract || [];
-                if (contracts.length > 0) {
-                    setCtaMode(resolveContractCtaMode(contracts));
-                } else if (campaignPayloadHasCtaHint(campaign)) {
-                    setCtaMode(resolveCtaModeFromCampaignListItem(campaign));
-                } else {
-                    setCtaMode("join");
-                }
+
+                const nextStatus = {
+                    pending: 0,
+                    activated: 0,
+                    rejected: 0,
+                    in_active: 0,
+                    paused: 0,
+                    lock: 0,
+                };
+              
+                contracts.forEach((item) => {
+                    if (item.status === 1) nextStatus.pending++;
+                    if (item.status === 2) nextStatus.activated++;
+                    if (item.status === 3) nextStatus.rejected++;
+                    if (item.status === 4) nextStatus.in_active++;
+                    if (item.status === 5) nextStatus.paused++;
+                    if (item.status === 6) nextStatus.lock++;
+                });
+            
+                setContractStatus(nextStatus);
+
+                // if (contracts.length > 0) {
+                //     setCtaMode(resolveContractCtaMode(contracts));
+                // } else if (campaignPayloadHasCtaHint(campaign)) {
+                //     setCtaMode(resolveCtaModeFromCampaignListItem(campaign));
+                // } else {
+                //     setCtaMode("join");
+                // }
             })
             .catch(() => {
-                if (campaignPayloadHasCtaHint(campaign)) {
-                    setCtaMode(resolveCtaModeFromCampaignListItem(campaign));
-                } else {
-                    setCtaMode("join");
-                }
+                // if (campaignPayloadHasCtaHint(campaign)) {
+                //     setCtaMode(resolveCtaModeFromCampaignListItem(campaign));
+                // } else {
+                //     setCtaMode("join");
+                // }
             })
             .finally(() => setCtaLoading(false));
     }, [campaign, isGuest, token]);
@@ -313,31 +357,32 @@ const JobDetailPage: React.FC = () => {
                             <span className="jd-oneclick__step-label">Nhận hoa hồng</span>
                         </div>
                     </div>
-                    <button
-                        type="button"
-                        className={oneclickBtnClass}
-                        onClick={handleMainAction}
-                        disabled={primaryCtaDisabled}
-                    >
-                        {isGuest ? (
-                            "Đăng nhập để tạo link"
-                        ) : ctaLoading ? (
-                            "Đang tải..."
-                        ) : ctaMode === "pending" ? (
-                            "Chờ phản hồi"
-                        ) : ctaMode === "rejected" ? (
-                            "Đã từ chối"
-                        ) : ctaMode === "join" ? (
-                            "Tham gia"
-                        ) : ctaMode === "create-link" ? (
-                            <>
-                                <LinkChainIcon size={18} />
-                                <span>Tạo link ({ctaLabel})</span>
-                            </>
-                        ) : (
-                            "Tham gia"
-                        )}
-                    </button>
+                    {ctaMode ? 
+                        <button
+                            type="button"
+                            className={oneclickBtnClass}
+                            onClick={handleMainAction}
+                            disabled={primaryCtaDisabled}
+                        >
+                            {isGuest ? (
+                                "Đăng nhập để tạo link"
+                            ) : ctaLoading ? (
+                                "Đang tải..."
+                            ) : ctaMode === "pending" ? (
+                                "Chờ phản hồi"
+                            ) : ctaMode === "rejected" ? (
+                                "Đã từ chối"
+                            ) : ctaMode === "join" ? (
+                                "Tham gia"
+                            ) : ctaMode === "create-link" ? (
+                                <>
+                                    <LinkChainIcon size={18} />
+                                    <span>Tạo link ({ctaLabel})</span>
+                                </>
+                            ) : null}
+                        </button>
+                        : null
+                    }
                 </div>
 
                 {/* 4. Stats grid */}
@@ -438,31 +483,32 @@ const JobDetailPage: React.FC = () => {
 
             {/* ─── BOTTOM FIXED BAR ─── */}
             <div className={`detail-fixed-bottom ${showFooter ? "is-visible" : ""}`}>
-                <button
-                    type="button"
-                    className={footerBtnClass}
-                    onClick={handleMainAction}
-                    disabled={primaryCtaDisabled}
-                >
-                    {isGuest ? (
-                        "Đăng nhập để tạo link"
-                    ) : ctaLoading ? (
-                        "Đang tải..."
-                    ) : ctaMode === "pending" ? (
-                        "Chờ phản hồi"
-                    ) : ctaMode === "rejected" ? (
-                        "Đã từ chối"
-                    ) : ctaMode === "join" ? (
-                        "Tham gia"
-                    ) : ctaMode === "create-link" ? (
-                        <>
-                            <LinkChainIcon size={20} />
-                            {`Tạo link (${ctaLabel})`}
-                        </>
-                    ) : (
-                        "Tham gia"
-                    )}
-                </button>
+                {ctaMode ? 
+                    <button
+                        type="button"
+                        className={footerBtnClass}
+                        onClick={handleMainAction}
+                        disabled={primaryCtaDisabled}
+                    >
+                        {isGuest ? (
+                            "Đăng nhập để tạo link"
+                        ) : ctaLoading ? (
+                            "Đang tải..."
+                        ) : ctaMode === "pending" ? (
+                            "Chờ phản hồi"
+                        ) : ctaMode === "rejected" ? (
+                            "Đã từ chối"
+                        ) : ctaMode === "join" ? (
+                            "Tham gia"
+                        ) : ctaMode === "create-link" ? (
+                            <>
+                                <LinkChainIcon size={20} />
+                                {`Tạo link (${ctaLabel})`}
+                            </>
+                        ) : null}
+                    </button>
+                    : null
+                }
             </div>
 
             <Modal
