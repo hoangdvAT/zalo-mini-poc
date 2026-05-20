@@ -392,14 +392,14 @@ const GetLinkPage: React.FC = () => {
                                 />
                                 Tạo link rút gọn
                             </label>
-                            <label style={{ display: "flex", alignItems: "center", gap: 8, color: "#374151", fontSize: 14 }}>
+                            {/* <label style={{ display: "flex", alignItems: "center", gap: 8, color: "#374151", fontSize: 14 }}>
                                 <input
                                     type="checkbox"
                                     checked={isQrCode}
                                     onChange={(e) => setIsQrCode(e.target.checked)}
                                 />
                                 Tạo link thành mã QR
-                            </label>
+                            </label> */}
                         </div>
 
                         <Text.Title size="small" className="getlink-form__title">Thông tin UTM</Text.Title>
